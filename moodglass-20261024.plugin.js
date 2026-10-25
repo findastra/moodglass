@@ -1,7 +1,7 @@
 /**
  * @name Moodglass
  * @author findastra
- * @version 0.1.0
+ * @version 0.1.1
  * @description Your photo chats as edge-to-edge Discord backgrounds. Click to refresh. Optional James Webb imagery.
  * @website https://github.com/findastra/moodglass
  * @source https://github.com/findastra/moodglass
@@ -133,17 +133,25 @@ class ChannelPhotos {
   }
   removeChannel(id){const job=this.jobs.get(id);if(job)job.cancelled=true;this.settings.channels=this.settings.channels.filter(c=>c.id!==id);this.save();this.host.refresh();}
   async page(channelId,before,job) {
-    const actions=BdApi.Webpack.getByKeys('fetchMessages','jumpToMessage')||BdApi.Webpack.getByKeys('fetchMessages');
-    const dispatcher=BdApi.Webpack.getByKeys('dispatch','subscribe','unsubscribe');
+    const actions=BdApi.Webpack.getModule(m=>typeof m?.fetchMessages==='function'&&typeof m?.jumpToMessage==='function',{searchExports:true});
+    const dispatcher=BdApi.Webpack.getModule(m=>typeof m?.dispatch==='function'&&typeof m?.subscribe==='function'&&typeof m?.unsubscribe==='function',{searchExports:true});
     if(!actions?.fetchMessages||!dispatcher)throw Error('Discord changed its photo-loading interface. Update Moodglass; saved photos still work.');
     return new Promise((resolve,reject)=>{
       let finished=false;
       const finish=(error,messages)=>{if(finished)return;finished=true;clearTimeout(timer);dispatcher.unsubscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.unsubscribe('LOAD_MESSAGES_FAILURE',failure);error?reject(error):resolve(messages);};
-      const success=event=>{if((event.channelId||event.channel_id)===channelId&&Array.isArray(event.messages))finish(null,event.messages);};
+      const started=Date.now();
+      const success=event=>{if((event.channelId||event.channel_id)===channelId&&Array.isArray(event.messages)&&(!event.requestStartTime||event.requestStartTime>=started)&&(event.isBefore===undefined||event.isBefore===!!before))finish(null,event.messages);};
       const failure=event=>{if((event.channelId||event.channel_id)===channelId)finish(Error('Discord could not load this chat. Try again later.'));};
       const timer=setTimeout(()=>finish(Error('Discord did not return the photo history. Try again.')),30000);
       dispatcher.subscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.subscribe('LOAD_MESSAGES_FAILURE',failure);
-      try{Promise.resolve(actions.fetchMessages({channelId,limit:100,before,forceFetch:true})).then(result=>{if(job.cancelled||!this.alive)return finish(Error('Import cancelled.'));const list=Array.isArray(result)?result:Array.isArray(result?.body)?result.body:Array.isArray(result?.messages)?result.messages:null;if(list)finish(null,list);},error=>finish(error));}catch(error){finish(error);}
+      // Discord's forceFetch belongs to MessageManager, not this paginated action.
+      // Bypass only its synchronous cache check for this call, then immediately unpatch.
+      let unpatch;
+      try{
+        if(typeof actions._tryFetchMessagesCached==='function')unpatch=BdApi.Patcher.instead('Moodglass',actions,'_tryFetchMessagesCached',(that,args,original)=>args[0]?.channelId===channelId?false:original(...args));
+        const pending=actions.fetchMessages({channelId,limit:100,before,skipLocalFetch:true});
+        Promise.resolve(pending).then(result=>{if(job.cancelled||!this.alive)return finish(Error('Import cancelled.'));if(result===false)return finish(Error('Discord could not load this chat. Try again later.'));const list=Array.isArray(result)?result:Array.isArray(result?.body)?result.body:Array.isArray(result?.messages)?result.messages:null;if(list)finish(null,list);},error=>finish(error));
+      }catch(error){finish(error);}finally{unpatch?.();}
     });
   }
   async sync(id,onProgress=()=>{}) {
@@ -153,17 +161,19 @@ class ChannelPhotos {
   }
   async importHistory(id,job,onProgress) {
     if(!this.settings.channels.some(c=>c.id===id))throw Error('Add this chat with + first.');
-    const lib=this.library[id]||(this.library[id]={photos:[],complete:false,latest:null});
-    const known=new Set(lib.photos.map(p=>p.id));let before,newest=lib.latest,pages=0,added=0;
+    const previous=this.library[id]||{photos:[],complete:false,latest:null};
+    // Commit only a complete scan. A failed/cancelled request must never prune the library.
+    const lib={...previous,photos:previous.photos.map(p=>({...p}))};
+    const known=new Set(lib.photos.filter(p=>fs.existsSync(path.join(this.root,p.file))).map(p=>p.id));
+    const seen=new Set();let before,newest=null,pages=0,added=0;
     while(this.alive&&!job.cancelled){
       const messages=await this.page(id,before,job);if(!this.alive||job.cancelled)throw Error('Import cancelled.');
       const batch=messages.filter(m=>(m.channel_id||id)===id&&/^\d+$/.test(m.id)&&(!before||BigInt(m.id)<BigInt(before)));
       if(!batch.length){if(messages.length)throw Error('Discord returned a repeated history page. Click again to retry.');lib.complete=true;break;}
       batch.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?1:-1);newest=!newest||BigInt(batch[0].id)>BigInt(newest)?batch[0].id:newest;
-      let reachedKnown=false;
       for(const message of batch){
-        if(lib.complete&&lib.latest&&BigInt(message.id)<=BigInt(lib.latest)){reachedKnown=true;break;}
         for(const a of message.attachments||[]){
+          seen.add(a.id);
           if(known.has(a.id)||(lib.excludedIds||[]).includes(a.id))continue;
           let url;try{url=new URL(a.url);}catch{continue;}
           const ext=path.extname(url.pathname).toLowerCase();
@@ -177,27 +187,30 @@ class ChannelPhotos {
           let bitmap;try{bitmap=await createImageBitmap(new Blob([bytes],{type:MIME[ext]}));}catch{continue;}
           const dimensions=[bitmap.width,bitmap.height];bitmap.close();
           const hash=crypto.createHash('sha256').update(bytes).digest('hex');
-          const duplicate=lib.photos.find(p=>p.hash===hash);
+          const duplicate=lib.photos.find(p=>p.hash===hash&&fs.existsSync(path.join(this.root,p.file)));
           const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('-','');
           const file=duplicate?.file||`${id}/photo-${a.id}-${date}${ext}`;
           if(!duplicate){fs.mkdirSync(path.join(this.root,id),{recursive:true});fs.writeFileSync(path.join(this.root,file),bytes);added++;}
-          lib.photos.push({id:a.id,message:message.id,file,mime:MIME[ext],hash,dimensions});known.add(a.id);this.save();
+          lib.photos=lib.photos.filter(p=>p.id!==a.id);
+          lib.photos.push({id:a.id,message:message.id,file,mime:MIME[ext],hash,dimensions});known.add(a.id);
         }
       }
       pages++;onProgress(`Read ${pages} pages; added ${added} images.`);
-      if(reachedKnown||batch.length<100){lib.complete=true;break;}
+      if(batch.length<100){lib.complete=true;break;}
       before=batch.at(-1).id;
       await new Promise(resolve=>setTimeout(resolve,700));
     }
     if(job.cancelled||!this.alive)throw Error('Import cancelled.');
-    lib.latest=newest;this.save();onProgress(`Ready: ${new Set(lib.photos.map(p=>p.hash)).size} photos. ${added} added.`);
+    lib.photos=lib.photos.filter(p=>seen.has(p.id)&&!(lib.excludedIds||[]).includes(p.id));
+    lib.latest=newest;this.library[id]=lib;this.save();onProgress(`Ready: ${new Set(lib.photos.map(p=>p.hash)).size} photos. ${added} added.`);
     return added;
   }
   async batch(id,count,clicked){
     if(!id)return[];
-    if(clicked){try{await this.sync(id);}catch(e){BdApi.UI.showToast(e.message,{type:'warning'});}}
+    if(clicked)await this.sync(id);
     const unique=[...new Map((this.library[id]?.photos||[]).map(p=>[p.hash,p])).values()].filter(p=>fs.existsSync(path.join(this.root,p.file)));
     for(let i=unique.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[unique[i],unique[j]]=[unique[j],unique[i]];}
+    if(!unique.length&&this.library[id]?.complete)return[];
     if(!unique.length)throw Error('No saved photos yet. Click this category to import its history.');
     return unique.slice(0,count).map(p=>({file:p.file,title:this.settings.channels.find(c=>c.id===id)?.name||'Photo',mime:p.mime,load:async()=>fs.readFileSync(path.join(this.root,p.file),null)}));
   }
