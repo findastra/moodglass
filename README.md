@@ -13,7 +13,7 @@ If upgrading from the earlier Astra Mood Boards / Astra NASA Photos prototypes, 
 
 ## Use
 
-- **Channel buttons:** check that channel for newer photos and choose a new mosaic. The first import reads the channel's accessible message history in pages, not just the latest 100 posts.
+- **Channel buttons:** reconcile that channel's accessible photo history and choose a new mosaic. Each click reads all pages, adds new photos, and removes deleted attachments from the background selection. An empty photo chat clears the background. Failed refreshes keep the previous selection and show an error.
 - **+**: add a server text channel, direct-message chat, or individual thread that your Discord client can access. For forums, add an individual post.
 - **✎**: show circular minus controls above the categories and reveal **+**. Click a minus to remove that category; click the pencil again to finish. Removal does not delete Discord posts or cached files. A removed NASA category can be restored through **+ → Add NASA**.
 - **NASA**: rotate through four verified, full-resolution Webb color images: Cosmic Cliffs, Rho Ophiuchi, and two views of the Pillars of Creation. NASA fills the window with one image and no global dimming filter.
@@ -25,7 +25,7 @@ No timed slideshow or background channel polling. A click starts a finite import
 
 Only image attachments from chats you explicitly add are imported. The plugin stores image files in `moodglass-cache` inside your BetterDiscord plugins directory, and channel IDs, category labels, attachment IDs and image hashes in BetterDiscord's local data storage. It does not save message text, read account tokens, send messages, or upload photos. Your personal channels, images and configuration are not part of this repository or download.
 
-PNG, JPEG, WebP, GIF and AVIF attachments up to 64 MB are supported. External image embeds and linked web galleries are not imported. The local cache retains downloaded photos even if the source post later disappears. Removing a category keeps its cache for re-adding later.
+PNG, JPEG, WebP, GIF and AVIF attachments up to 64 MB are supported. External image embeds and linked web galleries are not imported. Deleted attachments are removed from the selectable library after a successful refresh; downloaded files remain on disk. Removing a category keeps its cache for re-adding later.
 
 ## Webb sources and credits
 
