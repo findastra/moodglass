@@ -17,6 +17,7 @@ If upgrading from the earlier Astra Mood Boards / Astra NASA Photos prototypes, 
 - **+**: add a server text channel, direct-message chat, or individual thread that your Discord client can access. For forums, add an individual post.
 - **✎**: show circular minus controls above the categories and reveal **+**. Click a minus to remove that category; click the pencil again to finish. Removal does not delete Discord posts or cached files. A removed NASA category can be restored through **+ → Add NASA**.
 - **NASA**: rotate through four verified, full-resolution Webb color images: Cosmic Cliffs, Rho Ophiuchi, and two views of the Pillars of Creation. NASA fills the window with one image and no global dimming filter.
+- **Blurred borders:** use the checkbox at the top to blend photo edges or show crisp borders. The choice is saved and applies immediately without loading different photos. Enabled by default.
 - **Resize:** the current photos rearrange without changing. Mosaic tiles crop to fill their space, with no gaps or repeated image content in a layout.
 
 No timed slideshow or background channel polling. A click starts a finite import; removing the category cancels its import. Large histories and Webb originals can take time to download.

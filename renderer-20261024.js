@@ -3,7 +3,7 @@
 function photoHost(){
  if(window.__moodglassHost)return window.__moodglassHost;
  const sources=new Map(),api=BdApi;
- const state=Object.assign({source:'MoodBoards',category:''},api.Data.load('Moodglass','preferences')||{});
+ const state=Object.assign({source:'MoodBoards',category:'',blurredBorders:true},api.Data.load('Moodglass','preferences')||{});
  const preferred=state.source;
  let editing=false;let images=[],generation=0,busy=false,resizeTimer;
  const root=document.createElement('div');root.id='moodglass-photo-backdrop';
@@ -25,6 +25,8 @@ function photoHost(){
  body.moodglass-photos #app-mount [class*="titleBar_"],body.moodglass-photos #app-mount [class*="bar_"],body.moodglass-photos #app-mount [class*="subtitleContainer_"],body.moodglass-photos #app-mount [class*="themed_"],body.moodglass-photos #app-mount [class*="channelTextArea_"],body.moodglass-photos #app-mount [class*="scrollableContainer_"],body.moodglass-photos #app-mount [class*="panels_"],body.moodglass-photos #app-mount [class*="guilds_"]{background:rgba(10,8,18,.40)!important;background-image:none!important}
  body.moodglass-photos{--background-gradient-highest:transparent;--background-gradient-high:transparent;--background-gradient-low:transparent;--bg-base-primary:transparent;--bg-base-secondary:transparent;--bg-base-tertiary:transparent}
  #moodglass-photo-toolbar{position:fixed;top:5px;right:190px;left:auto;z-index:10002;display:flex;gap:5px;max-width:calc(100vw - 285px);overflow:visible;padding:0;border:0;background:none;box-shadow:none;font:11px system-ui;-webkit-app-region:no-drag;scrollbar-width:none}
+ #moodglass-photo-toolbar .moodglass-border-toggle{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;color:#eee5f6;background:rgba(18,14,26,.68);border-radius:5px;padding:2px 6px;cursor:pointer}
+ #moodglass-photo-toolbar .moodglass-border-toggle input{margin:0;accent-color:#dcc1f5;cursor:pointer}
  #moodglass-photo-toolbar.editing{top:16px}
  #moodglass-photo-toolbar .moodglass-remove{position:absolute;top:-13px;left:50%;transform:translateX(-50%);border-radius:50%;width:17px;height:17px;min-width:17px;padding:0;font: bold 16px/16px system-ui;background:#f0d8ed;color:#48223c;box-shadow:0 1px 4px #0008}
  #moodglass-photo-toolbar::-webkit-scrollbar{display:none}
@@ -40,6 +42,7 @@ function photoHost(){
   for(const c of sources.get('MoodBoards')?.categories?.()||[])if(c.id!=='all')add(c.label,'MoodBoards',c.id);
   if(editing){const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','Add photo chat');plus.onclick=()=>sources.get('MoodBoards')?.showAdd();bar.append(plus);}
   const pencil=document.createElement('button');pencil.textContent='✎';pencil.setAttribute('aria-label',editing?'Finish editing categories':'Edit photo categories');pencil.setAttribute('aria-pressed',String(editing));pencil.onclick=()=>{editing=!editing;render();};bar.append(pencil);
+  const label=document.createElement('label');label.className='moodglass-border-toggle';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=state.blurredBorders;checkbox.onchange=()=>{state.blurredBorders=checkbox.checked;save();layout();bar.querySelector('input').focus();};label.append(checkbox,document.createTextNode('Blurred borders'));label.title='Blend the edges between background photos';bar.append(label);
  }
  function currentTitle(){return images.map(x=>x.item.title+' Â· '+x.w+' Ã— '+x.h).join('\n');}
  function dispose(list){for(const x of list)URL.revokeObjectURL(x.url);}
@@ -52,7 +55,7 @@ function photoHost(){
   for(const x of shown){const row=rows.reduce((a,b)=>a.weight<=b.weight?a:b);row.items.push(x);row.weight+=Math.max(.5,Math.min(2,x.w/x.h));}
   const total=rows.reduce((n,r)=>n+1/r.weight,0);let top=0;
   rows.forEach((row,ri)=>{const bottom=ri===rows.length-1?innerHeight:Math.round(top+innerHeight/row.weight/total);let left=0;
-   row.items.forEach((x,i)=>{const right=i===row.items.length-1?innerWidth:Math.round(left+innerWidth*Math.max(.5,Math.min(2,x.w/x.h))/row.weight);const panel=document.createElement('div');panel.className='moodglass-photo-panel';panel.dataset.file=x.item.file||x.item.title;const fx=left>0?56:0,fy=top>0?56:0;panel.style.cssText=`left:${left-fx}px;top:${top-fy}px;width:${right-left+fx}px;height:${bottom-top+fy}px`;if(fx||fy){panel.style.maskImage=`linear-gradient(to right,${fx?'transparent, black '+fx+'px':'black,black'}),linear-gradient(to bottom,${fy?'transparent, black '+fy+'px':'black,black'})`;panel.style.maskComposite='intersect';}x.img.alt='';panel.append(x.img);root.append(panel);left=right;});top=bottom;
+   row.items.forEach((x,i)=>{const right=i===row.items.length-1?innerWidth:Math.round(left+innerWidth*Math.max(.5,Math.min(2,x.w/x.h))/row.weight);const panel=document.createElement('div');panel.className='moodglass-photo-panel';panel.dataset.file=x.item.file||x.item.title;const fx=state.blurredBorders&&left>0?56:0,fy=state.blurredBorders&&top>0?56:0;panel.style.cssText=`left:${left-fx}px;top:${top-fy}px;width:${right-left+fx}px;height:${bottom-top+fy}px`;if(fx||fy){panel.style.maskImage=`linear-gradient(to right,${fx?'transparent, black '+fx+'px':'black,black'}),linear-gradient(to bottom,${fy?'transparent, black '+fy+'px':'black,black'})`;panel.style.maskComposite='intersect';}x.img.alt='';panel.append(x.img);root.append(panel);left=right;});top=bottom;
   });render();
  }
  async function next(clicked=false){if(busy)return;const provider=sources.get(state.source);if(!provider)return;busy=true;const token=++generation;const batch=[];try{
