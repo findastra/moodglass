@@ -6,7 +6,12 @@ Turn your Discord photo chats into backgrounds. Click **✎**, then add a channe
 
 1. Install BetterDiscord from [betterdiscord.app](https://betterdiscord.app/).
 2. Download [moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js). It saves straight to your Downloads folder.
-3. In Discord, open **Settings → BetterDiscord → Plugins → Open Plugins Folder**. Put the downloaded file there and enable **Moodglass**.
+3. Open your BetterDiscord plugins folder, `C:\Users\<you>\AppData\Roaming\BetterDiscord\plugins`. Any of these gets you there:
+   - In Discord: **Settings → BetterDiscord → Plugins → Open Plugins Folder**.
+   - In [Everything](https://www.voidtools.com/) search: type `betterdiscord`, open the **BetterDiscord** folder in `AppData\Roaming`, then its **plugins** folder.
+   - In File Explorer: paste `%APPDATA%\BetterDiscord\plugins` into the address bar and press Enter.
+
+   Drag the downloaded `moodglass-20261024.plugin.js` from Downloads into that folder, then turn on **Moodglass** in Discord's BetterDiscord → Plugins list.
 4. Click **✎** at the top right, then **+**. Click a chat in Discord, or navigate to it and choose **Use this open chat**.
 
 If upgrading from the earlier Astra Mood Boards / Astra NASA Photos prototypes, disable both before enabling Moodglass.
