@@ -1,6 +1,6 @@
 # Moodglass
 
-Turn your Discord photo chats into backgrounds. Click **✎**, then add a chat with **+**, then click its button for a new, edge-to-edge mosaic. **⏻** turns every background off and back on. NASA shows a new Hubble HD photo every day.
+Turn your Discord photo chats into backgrounds. Click **✎**, then add a chat with **+**, then click its button for a new, edge-to-edge mosaic. **⏻** turns every background off and back on. Each NASA click brings in a new James Webb image from NASA.
 
 ## Install
 
@@ -21,12 +21,12 @@ If the earlier Astra Mood Boards / Astra NASA Photos prototypes are still turned
 - **Channel buttons:** reconcile that channel's accessible photo history and choose a new mosaic. Each click reads the newest photos (up to 150 photos or 3,000 messages back, so big chats can't crash Discord), adds new ones, and removes deleted attachments from the background selection. Up to 12 photos show at once. An empty photo chat clears the background. Failed refreshes keep the previous selection and show an error.
 - **+**: add a server text channel, direct-message chat, or individual thread that your Discord client can access. For forums, add an individual post. A DM's button is named after the other person's profile name. If a name is longer than 20 letters, Moodglass asks you to type a shorter one.
 - **✎**: show a minus next to each category and reveal **+**. Click a minus to remove that category; click the pencil again to finish. Removal does not delete Discord posts or cached files. A removed NASA category can be restored through **+ → Add NASA**.
-- **NASA**: once a day Moodglass adds one Hubble HD photo to the `moodglass-stars` folder in your plugins folder. Usually it is a random space photo from NASA's image library; sometimes it is one of the classics (Pillars of Creation, Horsehead, Crab, Carina, Whirlpool, Mystic Mountain, Westerlund 2). The first NASA click of the day shows today's photo; later clicks pick from the whole folder, with the classics coming up three times as often. Put your own space pictures in `moodglass-stars` and they join the rotation. One image fills the window.
+- **NASA**: each click downloads a new James Webb image from NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/), saves it to the `moodglass-stars` folder in your plugins folder (your star library) and fills the window with it. The first four clicks bring in the classics: Cosmic Cliffs, Rho Ophiuchi and two Pillars of Creation views. After that, each click picks a random Webb sky image (compass, chart, diagram and hardware images are skipped, and anything under 3840 pixels). Originals over 8K are stored as high-quality 8K (7680 px) JPEGs to keep Discord from running out of memory. If NASA can't be reached, a photo from your library is shown. Put your own space pictures in `moodglass-stars` and they can show up too.
 - **⏻**: turn all mood boards off so Discord looks normal; only the power button stays. Click it again to turn them back on. The choice is saved.
 - **Blurred borders:** use the checkbox at the top to blend photo edges or show crisp borders. The choice is saved and applies immediately without loading different photos. Enabled by default.
 - **Resize:** the current photos rearrange without changing. Mosaic tiles crop to fill their space, with no gaps or repeated image content in a layout.
 
-No timed slideshow or background channel polling. A click starts a finite import; removing the category cancels its import. The daily Hubble photo (up to 40 MB) downloads on the first NASA click of the day.
+No timed slideshow or background channel polling. A click starts a finite import; removing the category cancels its import. Webb originals can be over 100 MB, so a NASA click can take a few seconds.
 
 ## What is stored
 
@@ -34,9 +34,9 @@ Only image attachments from chats you explicitly add are imported. The plugin st
 
 PNG, JPEG, WebP, GIF and AVIF attachments are supported. Photos larger than 2048 pixels are downloaded as resized copies from Discord's image server; files over 20 MB that can't be resized are skipped. External image embeds and linked web galleries are not imported. Deleted attachments are removed from the selectable library after a successful refresh; downloaded files remain on disk. Removing a category keeps its cache for re-adding later.
 
-## Hubble sources and credits
+## Webb sources and credits
 
-Images come from the [NASA Image and Video Library](https://images.nasa.gov/) (Goddard Space Flight Center's Hubble archive), credited to NASA, ESA and STScI. The title appears when hovering over NASA. The classic image IDs are in [stars-20261027.js](stars-20261027.js). Only images at least 1920 pixels wide or tall are kept.
+Images come from NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/) on science.nasa.gov, credited to NASA, ESA, CSA and STScI. The title appears when hovering over NASA. The four classic image addresses are in [stars-20261027.js](stars-20261027.js).
 
 ## Development and status
 
