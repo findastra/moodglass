@@ -5,7 +5,7 @@ Turn your Discord photo chats into backgrounds. Click **✎**, then add a channe
 ## Install
 
 1. Install BetterDiscord from [betterdiscord.app](https://betterdiscord.app/).
-2. Download [moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js). It saves straight to your Downloads folder.
+2. Download [moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js). It saves straight to your Downloads folder. **Don't double-click it.** Windows would try to run it with Windows Script Host and show a "Syntax error / JavaScript compilation error" box. That box is harmless (click OK); the file only works inside BetterDiscord.
 3. Open your BetterDiscord plugins folder, `C:\Users\<you>\AppData\Roaming\BetterDiscord\plugins`. Any of these gets you there:
    - In Discord: **Settings → BetterDiscord → Plugins → Open Plugins Folder**.
    - In [Everything](https://www.voidtools.com/) search: type `betterdiscord`, open the **BetterDiscord** folder in `AppData\Roaming`, then its **plugins** folder.
