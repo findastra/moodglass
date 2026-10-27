@@ -5,7 +5,7 @@ Turn your Discord photo chats into backgrounds. Click **✎**, then add a channe
 ## Install
 
 1. Install BetterDiscord from [betterdiscord.app](https://betterdiscord.app/).
-2. Download [moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/raw/refs/heads/main/moodglass-20261024.plugin.js).
+2. Download [moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js). It saves straight to your Downloads folder.
 3. In Discord, open **Settings → BetterDiscord → Plugins → Open Plugins Folder**. Put the downloaded file there and enable **Moodglass**.
 4. Click **✎** at the top right, then **+**. Click a chat in Discord, or navigate to it and choose **Use this open chat**.
 
