@@ -18,8 +18,8 @@ If upgrading from the earlier Astra Mood Boards / Astra NASA Photos prototypes, 
 
 ## Use
 
-- **Channel buttons:** reconcile that channel's accessible photo history and choose a new mosaic. Each click reads all pages, adds new photos, and removes deleted attachments from the background selection. An empty photo chat clears the background. Failed refreshes keep the previous selection and show an error.
-- **+**: add a server text channel, direct-message chat, or individual thread that your Discord client can access. For forums, add an individual post.
+- **Channel buttons:** reconcile that channel's accessible photo history and choose a new mosaic. Each click reads the newest photos (up to 150 photos or 3,000 messages back, so big chats can't crash Discord), adds new ones, and removes deleted attachments from the background selection. Up to 12 photos show at once. An empty photo chat clears the background. Failed refreshes keep the previous selection and show an error.
+- **+**: add a server text channel, direct-message chat, or individual thread that your Discord client can access. For forums, add an individual post. A DM's button is named after the other person's profile name. If a name is longer than 20 letters, Moodglass asks you to type a shorter one.
 - **✎**: show circular minus controls above the categories and reveal **+**. Click a minus to remove that category; click the pencil again to finish. Removal does not delete Discord posts or cached files. A removed NASA category can be restored through **+ → Add NASA**.
 - **NASA**: rotate through four verified, full-resolution Webb color images: Cosmic Cliffs, Rho Ophiuchi, and two views of the Pillars of Creation. NASA fills the window with one image and no global dimming filter.
 - **Blurred borders:** use the checkbox at the top to blend photo edges or show crisp borders. The choice is saved and applies immediately without loading different photos. Enabled by default.
@@ -31,7 +31,7 @@ No timed slideshow or background channel polling. A click starts a finite import
 
 Only image attachments from chats you explicitly add are imported. The plugin stores image files in `moodglass-cache` inside your BetterDiscord plugins directory, and channel IDs, category labels, attachment IDs and image hashes in BetterDiscord's local data storage. It does not save message text, read account tokens, send messages, or upload photos. Your personal channels, images and configuration are not part of this repository or download.
 
-PNG, JPEG, WebP, GIF and AVIF attachments up to 64 MB are supported. External image embeds and linked web galleries are not imported. Deleted attachments are removed from the selectable library after a successful refresh; downloaded files remain on disk. Removing a category keeps its cache for re-adding later.
+PNG, JPEG, WebP, GIF and AVIF attachments are supported. Photos larger than 2048 pixels are downloaded as resized copies from Discord's image server; files over 20 MB that can't be resized are skipped. External image embeds and linked web galleries are not imported. Deleted attachments are removed from the selectable library after a successful refresh; downloaded files remain on disk. Removing a category keeps its cache for re-adding later.
 
 ## Webb sources and credits
 
