@@ -27,24 +27,25 @@ function photoHost(){
  #moodglass-photo-toolbar{position:fixed;top:5px;right:190px;left:auto;z-index:10002;display:flex;gap:5px;max-width:calc(100vw - 285px);overflow:visible;padding:0;border:0;background:none;box-shadow:none;font:11px system-ui;-webkit-app-region:no-drag;scrollbar-width:none}
  #moodglass-photo-toolbar .moodglass-border-toggle{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;color:#eee5f6;background:rgba(18,14,26,.68);border-radius:5px;padding:2px 6px;cursor:pointer}
  #moodglass-photo-toolbar .moodglass-border-toggle input{margin:0;accent-color:#dcc1f5;cursor:pointer}
- #moodglass-photo-toolbar.editing{top:16px}
- #moodglass-photo-toolbar .moodglass-remove{position:absolute;top:-13px;left:50%;transform:translateX(-50%);border-radius:50%;width:17px;height:17px;min-width:17px;padding:0;font: bold 16px/16px system-ui;background:#f0d8ed;color:#48223c;box-shadow:0 1px 4px #0008}
+ #moodglass-photo-toolbar *{-webkit-app-region:no-drag}
+ #moodglass-photo-toolbar .moodglass-remove{margin-left:2px;border-radius:50%;width:19px;height:19px;min-width:19px;padding:0;font: bold 16px/18px system-ui;background:#f0d8ed;color:#48223c;box-shadow:0 1px 4px #0008}
  #moodglass-photo-toolbar::-webkit-scrollbar{display:none}
  #moodglass-photo-toolbar button{border:0;border-radius:5px;padding:3px 7px;color:#eee5f6;background:rgba(18,14,26,.68);white-space:nowrap;font:inherit;cursor:pointer;flex-shrink:0}
  #moodglass-photo-toolbar button[aria-pressed="true"]{background:#dcc1f5;color:#24142e}
  #moodglass-photo-toolbar button:focus-visible{outline:2px solid #efdaff;outline-offset:-2px}
  `);
  const save=()=>api.Data.save('Moodglass','preferences',state);
- const count=()=>Math.max(2,Math.min(30,Math.ceil(innerWidth/600)*Math.max(2,Math.ceil(innerHeight/650))));
+ // At most 12 photos on screen at once; more decoded images ran Discord out of memory.
+ const count=()=>Math.max(2,Math.min(12,Math.ceil(innerWidth/600)*Math.max(2,Math.ceil(innerHeight/650))));
  function render(){bar.replaceChildren();bar.classList.toggle("editing",editing);
-  function add(label,source,category){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(state.source===source&&(source==='NASA'||state.category===category)));b.title=currentTitle()||'Click for another photo';b.onclick=()=>{++generation;busy=false;state.source=source;state.category=category;save();render();next(true);};const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:inline-flex';wrap.append(b);if(editing){const minus=document.createElement('button');minus.textContent='−';minus.className='moodglass-remove';minus.setAttribute('aria-label','Remove '+label);minus.onclick=()=>sources.get('MoodBoards')?.removeCategory(source,category);wrap.append(minus);}bar.append(wrap);}
+  function add(label,source,category){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(state.source===source&&(source==='NASA'||state.category===category)));b.title=currentTitle()||'Click for another photo';b.onclick=()=>{++generation;busy=false;state.source=source;state.category=category;save();render();next(true);};const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:inline-flex';wrap.append(b);if(editing){const minus=document.createElement('button');minus.textContent='−';minus.className='moodglass-remove';minus.setAttribute('aria-label','Remove '+label);minus.type='button';minus.title='Remove '+label;minus.onclick=e=>{e.stopPropagation();sources.get('MoodBoards')?.removeCategory(source,category);};wrap.append(minus);}bar.append(wrap);}
   if(sources.has('NASA'))add('NASA','NASA','all');
   for(const c of sources.get('MoodBoards')?.categories?.()||[])if(c.id!=='all')add(c.label,'MoodBoards',c.id);
   if(editing){const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','Add photo chat');plus.onclick=()=>sources.get('MoodBoards')?.showAdd();bar.append(plus);}
   const pencil=document.createElement('button');pencil.textContent='✎';pencil.setAttribute('aria-label',editing?'Finish editing categories':'Edit photo categories');pencil.setAttribute('aria-pressed',String(editing));pencil.onclick=()=>{editing=!editing;render();};bar.append(pencil);
   const label=document.createElement('label');label.className='moodglass-border-toggle';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=state.blurredBorders;checkbox.onchange=()=>{state.blurredBorders=checkbox.checked;save();layout();bar.querySelector('input').focus();};label.append(checkbox,document.createTextNode('Blurred borders'));label.title='Blend the edges between background photos';bar.append(label);
  }
- function currentTitle(){return images.map(x=>x.item.title+' Â· '+x.w+' Ã— '+x.h).join('\n');}
+ function currentTitle(){return images.map(x=>x.item.title+' · '+x.w+' × '+x.h).join('\n');}
  function dispose(list){for(const x of list)URL.revokeObjectURL(x.url);}
  async function decode(item){const bytes=await item.load();const url=URL.createObjectURL(new Blob([bytes],{type:item.mime||'image/jpeg'}));try{const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('Unable to decode photo'));img.src=url;});const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,1,1);const [r,g,b,a]=ctx.getImageData(0,0,1,1).data;return{item,url,img,empty:a<16,w:img.naturalWidth,h:img.naturalHeight,color:`rgb(${r},${g},${b})`};}catch(e){URL.revokeObjectURL(url);throw e;}}
  function layout(){
