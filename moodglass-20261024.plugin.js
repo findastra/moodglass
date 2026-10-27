@@ -1,8 +1,8 @@
 /**
  * @name Moodglass
  * @author findastra
- * @version 0.1.3
- * @description Your photo chats as edge-to-edge Discord backgrounds. Click to refresh. Optional James Webb imagery.
+ * @version 0.2.0
+ * @description Your photo chats as edge-to-edge Discord backgrounds. Click to refresh. Optional daily Hubble HD photos.
  * @website https://github.com/findastra/moodglass
  * @source https://github.com/findastra/moodglass
  */
@@ -11,12 +11,12 @@
 function photoHost(){
  if(window.__moodglassHost)return window.__moodglassHost;
  const sources=new Map(),api=BdApi;
- const state=Object.assign({source:'MoodBoards',category:'',blurredBorders:true},api.Data.load('Moodglass','preferences')||{});
+ const state=Object.assign({source:'MoodBoards',category:'',blurredBorders:true,on:true},api.Data.load('Moodglass','preferences')||{});
  const preferred=state.source;
  let editing=false;let images=[],generation=0,busy=false,resizeTimer;
  const root=document.createElement('div');root.id='moodglass-photo-backdrop';
  const bar=document.createElement('nav');bar.id='moodglass-photo-toolbar';bar.setAttribute('aria-label','Photo backgrounds');
- document.body.prepend(root);document.body.append(bar);document.body.classList.add('moodglass-photos');document.body.classList.remove('moodglass-photo-saver');
+ document.body.prepend(root);document.body.append(bar);document.body.classList.add('moodglass-photos');if(state.on===false){root.style.display='none';document.body.classList.remove('moodglass-photos');}document.body.classList.remove('moodglass-photo-saver');
  api.DOM.addStyle('moodglass-photo-backgrounds',`
  #moodglass-photo-backdrop{position:fixed;inset:0;display:block;overflow:hidden;z-index:0;pointer-events:none;background:#17131e}
  body.moodglass-photos #app-mount [class*="guilds_"] *,body.moodglass-photos #app-mount [class*="userProfileOuter_"],body.moodglass-photos #app-mount [class*="userProfileInner_"],body.moodglass-photos #app-mount [class*="outer_"][class*="panel_"],body.moodglass-photos #app-mount [class*="inner_"][class*="panel_"]{background-color:transparent!important;background-image:none!important}
@@ -38,6 +38,8 @@ function photoHost(){
  #moodglass-photo-toolbar *{-webkit-app-region:no-drag}
  #moodglass-photo-toolbar .moodglass-remove{margin-left:2px;border-radius:50%;width:19px;height:19px;min-width:19px;padding:0;font: bold 16px/18px system-ui;background:#f0d8ed;color:#48223c;box-shadow:0 1px 4px #0008}
  #moodglass-photo-toolbar::-webkit-scrollbar{display:none}
+ #moodglass-photo-toolbar button.moodglass-power{font-size:13px;min-width:24px}
+ #moodglass-photo-toolbar button.moodglass-power[aria-pressed="false"]{background:rgba(18,14,26,.68);color:#9b8aa8}
  #moodglass-photo-toolbar button{border:0;border-radius:5px;padding:3px 7px;color:#eee5f6;background:rgba(18,14,26,.68);white-space:nowrap;font:inherit;cursor:pointer;flex-shrink:0}
  #moodglass-photo-toolbar button[aria-pressed="true"]{background:#dcc1f5;color:#24142e}
  #moodglass-photo-toolbar button:focus-visible{outline:2px solid #efdaff;outline-offset:-2px}
@@ -45,7 +47,11 @@ function photoHost(){
  const save=()=>api.Data.save('Moodglass','preferences',state);
  // At most 12 photos on screen at once; more decoded images ran Discord out of memory.
  const count=()=>Math.max(2,Math.min(12,Math.ceil(innerWidth/600)*Math.max(2,Math.ceil(innerHeight/650))));
+ // Power switch: off hides every background and gives Discord its normal look back.
+ function apply(){root.style.display=state.on?'':'none';document.body.classList.toggle('moodglass-photos',state.on);}
  function render(){bar.replaceChildren();bar.classList.toggle("editing",editing);
+  const power=document.createElement('button');power.type='button';power.textContent='⏻';power.className='moodglass-power';power.setAttribute('aria-label',state.on?'Turn mood boards off':'Turn mood boards on');power.title=power.getAttribute('aria-label');power.setAttribute('aria-pressed',String(state.on));power.onclick=()=>{state.on=!state.on;save();apply();render();if(state.on&&!images.length)next();};bar.append(power);
+  if(!state.on)return;
   function add(label,source,category){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(state.source===source&&(source==='NASA'||state.category===category)));b.title=currentTitle()||'Click for another photo';b.onclick=()=>{++generation;busy=false;state.source=source;state.category=category;save();render();next(true);};const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:inline-flex';wrap.append(b);if(editing){const minus=document.createElement('button');minus.textContent='−';minus.className='moodglass-remove';minus.setAttribute('aria-label','Remove '+label);minus.type='button';minus.title='Remove '+label;minus.onclick=e=>{e.stopPropagation();sources.get('MoodBoards')?.removeCategory(source,category);};wrap.append(minus);}bar.append(wrap);}
   if(sources.has('NASA'))add('NASA','NASA','all');
   for(const c of sources.get('MoodBoards')?.categories?.()||[])if(c.id!=='all')add(c.label,'MoodBoards',c.id);
@@ -73,7 +79,7 @@ function photoHost(){
   if(token!==generation){dispose(batch);return;}const previous=images;images=batch;layout();dispose(previous);
  }catch(e){dispose(batch);if(token===generation){bar.title=e.message;api.UI?.showToast?.(e.message,{type:'warning'});}}finally{if(token===generation)busy=false;}}
  const resize=()=>layout();window.addEventListener('resize',resize);
- const host={edit(){editing=!editing;render();},select(source,category,clicked=true){++generation;busy=false;state.source=source;state.category=category;save();render();next(clicked);},add(id,provider){sources.set(id,provider);if(id===preferred||!sources.has(state.source)){++generation;busy=false;state.source=id;}render();if(state.source===id)next();},refresh(){render();},remove(id){sources.delete(id);if(state.source===id){++generation;busy=false;state.source=sources.keys().next().value;if(state.source)next();}if(!sources.size){++generation;clearTimeout(resizeTimer);window.removeEventListener('resize',resize);dispose(images);root.remove();bar.remove();document.body.classList.remove('moodglass-photos');api.DOM.removeStyle('moodglass-photo-backgrounds');delete window.__moodglassHost;}else render();}};
+ const host={edit(){editing=!editing;render();},select(source,category,clicked=true){++generation;busy=false;state.source=source;state.category=category;save();render();next(clicked);},add(id,provider){sources.set(id,provider);if(id===preferred||!sources.has(state.source)){++generation;busy=false;state.source=id;}render();if(state.source===id&&state.on)next();},refresh(){render();},remove(id){sources.delete(id);if(state.source===id){++generation;busy=false;state.source=sources.keys().next().value;if(state.source)next();}if(!sources.size){++generation;clearTimeout(resizeTimer);window.removeEventListener('resize',resize);dispose(images);root.remove();bar.remove();document.body.classList.remove('moodglass-photos');api.DOM.removeStyle('moodglass-photo-backgrounds');delete window.__moodglassHost;}else render();}};
  window.__moodglassHost=host;return host;
 }
 // Public HTTPS only. No Discord token, cookies, credentials, or authenticated endpoints.
@@ -97,21 +103,101 @@ function publicGet(address,limit=16000000,redirects=0){
     });req.setTimeout(25000,()=>req.destroy(Error('NASA request timed out')));req.on('error',reject);});
 }
 
-class WebbPhotos {
-  start(){this.first=true;this.pool=[];this.poolTime=0;this.cache=new Map();this.host=photoHost();this.host.add('NASA',{label:'NASA',actions:[{id:'today',label:'Photo of the day'},{id:'random',label:'Random HD'}],next:(category,action)=>this.pick(action)});}
-  stop(){this.host?.remove('NASA');this.cache.clear();}
-  async json(url){return JSON.parse(new TextDecoder().decode(await publicGet(url)));}
-  async pick(){
-    const gallery=[{"page": "https://science.nasa.gov/asset/webb/rho-ophiuchi-nircam-image/", "image": "https://assets.science.nasa.gov/content/dam/science/missions/webb/science/2023/07/STScI-01H44AVB69N1P8RAEJ12NW2RB2.png", "title": "Rho Ophiuchi \u2014 NIRCam"}, {"page": "https://science.nasa.gov/asset/webb/pillars-of-creation-nircam-and-miri-composite-image/", "image": "https://assets.science.nasa.gov/content/dam/science/missions/webb/outreach/migrated/2022/STScI-01GK2KMYS6HADS6ND8NRHG53RP.png", "title": "Pillars of Creation \u2014 NIRCam + MIRI"}, {"page": "https://science.nasa.gov/asset/webb/pillars-of-creation-nircam-image/", "image": "https://assets.science.nasa.gov/content/dam/science/missions/webb/science/2022/10/STScI-01GGF8H15VZ09MET9HFBRQX4S3.png", "title": "Pillars of Creation \u2014 NIRCam"}, {"page": "https://science.nasa.gov/missions/webb/nasas-webb-reveals-cosmic-cliffs-glittering-landscape-of-star-birth/", "image": "https://assets.science.nasa.gov/content/dam/science/missions/webb/science/2022/07/STScI-01GA6KKWG229B16K4Q38CH3BXS.png", "title": "Cosmic Cliffs \u2014 Carina Nebula"}];
-    if(!this.pool.length){this.pool=[...gallery].sort(()=>Math.random()-.5);if(this.first){this.pool=this.pool.filter(x=>!x.title.startsWith('Cosmic'));this.pool.unshift(gallery[3]);}else if(this.pool[0].image===this.last)this.pool.push(this.pool.shift());}
-    this.first=false;
-    for(let attempts=this.pool.length;attempts>0;attempts--){const p=this.pool.shift();const item=this.item(p.image,'James Webb · '+p.title,p.page,'NASA / ESA / CSA / STScI');try{if(await this.qualified(item)){this.last=p.image;return item;}}catch(e){this.lastError=e;}}
-    throw Error('Could not load a full-resolution Webb image. Click NASA to retry. '+(this.lastError?.message||''));
+// NASA button: Hubble HD photos kept in a "moodglass-stars" folder next to the plugin.
+// Once a day one new Hubble photo is added (sometimes a famous classic, usually a random one
+// from NASA's image library). Clicking NASA shows a random photo from the folder, with the
+// classics coming up more often. Any image the user drops into the folder joins the rotation.
+const STAR_TYPES = {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.avif':'image/avif'};
+const HUBBLE_CLASSICS = [
+  {id:'GSFC_20171208_Archive_e000842',title:'Pillars of Creation (HD)'},
+  {id:'GSFC_20171208_Archive_e001518',title:'Horsehead Nebula'},
+  {id:'GSFC_20171208_Archive_e002159',title:'Crab Nebula'},
+  {id:'GSFC_20171208_Archive_e002076',title:'Carina Nebula'},
+  {id:'GSFC_20171208_Archive_e001925',title:'Whirlpool Galaxy'},
+  {id:'GSFC_20171208_Archive_e002058',title:'Mystic Mountain'},
+  {id:'GSFC_20171208_Archive_e000743',title:'Westerlund 2'}
+];
+// Keep pictures of space; skip photos of hardware, people and buildings.
+const SPACE=/nebula|galax|cluster|supernova|stars?|star-forming|stellar|deep field|quasar|comet|jupiter|saturn|uranus|neptune|mars|planetary/i;
+const NOT_SPACE=/mirror|engineer|chamber|spacecraft|hardware|building|anniversar|technician|servic|astronaut|launch|webb|telescope team|cleanroom|clean room|test/i;
+const CLASSIC_WEIGHT = 3, CLASSIC_CHANCE = 0.35, STAR_MAX_BYTES = 40000000, STAR_MIN_EDGE = 1920;
+class StarPhotos {
+  constructor(){
+    const fs=require('fs'),path=require('path');
+    this.root=path.join(BdApi.Plugins.folder,'moodglass-stars');
+    try{fs.mkdirSync(this.root,{recursive:true});}catch{}
+    this.data=Object.assign({day:'',today:'',titles:{}},BdApi.Data.load('Moodglass','stars')||{});
+    this.shownToday=false;this.last='';
   }
-  async qualified(item){const bitmap=await createImageBitmap(new Blob([await item.load()],{type:item.mime}));const w=bitmap.width,h=bitmap.height;bitmap.close();return Math.max(w,h)>=3840&&Math.min(w,h)>=1600;}
-  item(url,title,source,credit){const clean=s=>{const doc=new DOMParser().parseFromString(String(s||''),'text/html');return doc.body.textContent;};return {title:clean(`${title} Â· ${credit}`),source:source&&/^https:\/\//.test(source)?source:'https://science.nasa.gov/apod/',mime:/\.png(?:\?|$)/i.test(url)?'image/png':'image/jpeg',load:async()=>{if(this.cache.has(url))return this.cache.get(url);const bytes=await publicGet(url,192000000);this.cache.set(url,bytes);while(this.cache.size>2)this.cache.delete(this.cache.keys().next().value);return bytes;}};}
-  getSettingsPanel(){const p=document.createElement('p');p.textContent='NASA shows a curated rotation of four full-resolution James Webb color images: Cosmic Cliffs, Rho Ophiuchi, and two Pillars of Creation views. One image fills the entire window. Click NASA for another; the photo stays until you click again. Originals download from NASA, up to 192 MB, and may take a moment. Hover over NASA for the image title and credits.';return p;}
-};
+  save(){BdApi.Data.save('Moodglass','stars',this.data);}
+  day(){return new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('-','');}
+  files(){
+    const fs=require('fs'),path=require('path');
+    try{return fs.readdirSync(this.root).filter(f=>STAR_TYPES[path.extname(f).toLowerCase()]&&fs.statSync(path.join(this.root,f)).isFile());}catch{return[];}
+  }
+  classic(file){return HUBBLE_CLASSICS.some(c=>file.startsWith('hubble-'+c.id));}
+  async json(url){return JSON.parse(new TextDecoder().decode(await publicGet(url)));}
+  // The original (largest) file NASA keeps for an image.
+  async original(id){
+    const list=(await this.json('https://images-api.nasa.gov/asset/'+encodeURIComponent(id))).collection.items.map(i=>i.href);
+    return list.find(h=>/~orig\.(jpe?g|png)$/i.test(h))||list.find(h=>/~large\.(jpe?g|png)$/i.test(h));
+  }
+  async randomHubble(){
+    const search=q=>this.json('https://images-api.nasa.gov/search?q=hubble&center=GSFC&media_type=image'+q);
+    const total=(await search('&page_size=1')).collection.metadata.total_hits||0;
+    const pages=Math.max(1,Math.min(100,Math.ceil(total/100)));
+    const items=(await search('&page_size=100&page='+(1+Math.floor(Math.random()*pages)))).collection.items
+      .map(i=>i.data?.[0]).filter(d=>d?.nasa_id&&SPACE.test(d.title||'')&&!NOT_SPACE.test((d.title||'')+' '+(d.keywords||[]).join(' ')));
+    return items.sort(()=>Math.random()-.5).map(d=>({id:d.nasa_id,title:d.title}));
+  }
+  // Downloads one photo into the folder; returns its file name, or '' if it is not HD.
+  async fetchStar(c){
+    const fs=require('fs'),path=require('path');
+    const safe='hubble-'+c.id.replace(/[^\w.-]+/g,'-');
+    const existing=this.files().find(f=>f.startsWith(safe+'.'));if(existing)return existing;
+    const href=await this.original(c.id);if(!href)return'';
+    const ext=(href.match(/\.(jpe?g|png)$/i)||['.jpg'])[0].toLowerCase();
+    const bytes=await publicGet(href,STAR_MAX_BYTES);
+    const bitmap=await createImageBitmap(new Blob([bytes],{type:STAR_TYPES[ext]}));
+    const hd=Math.max(bitmap.width,bitmap.height)>=STAR_MIN_EDGE;bitmap.close();if(!hd)return'';
+    fs.writeFileSync(path.join(this.root,safe+ext),bytes);
+    this.data.titles[safe+ext]=c.title;return safe+ext;
+  }
+  // Once per day: add today's Hubble photo to the folder.
+  async daily(){
+    const fs=require('fs'),path=require('path');
+    const day=this.day();
+    if(this.data.day===day&&this.data.today&&fs.existsSync(path.join(this.root,this.data.today)))return;
+    const have=this.files();
+    const missing=HUBBLE_CLASSICS.filter(c=>!have.some(f=>f.startsWith('hubble-'+c.id)));
+    const pickClassic=()=>missing.splice(Math.floor(Math.random()*missing.length),1)[0];
+    let candidates=[];
+    if(missing.length&&(Math.random()<CLASSIC_CHANCE||!have.length))candidates.push(pickClassic());
+    try{candidates.push(...(await this.randomHubble()).filter(c=>!have.some(f=>f.startsWith('hubble-'+c.id))).slice(0,6));}catch(e){this.lastError=e;}
+    while(missing.length)candidates.push(pickClassic());
+    for(const c of candidates){try{const file=await this.fetchStar(c);if(file){this.data.day=day;this.data.today=file;this.shownToday=false;this.save();return;}}catch(e){this.lastError=e;}}
+  }
+  item(file){
+    const fs=require('fs'),path=require('path');
+    const ext=path.extname(file).toLowerCase();
+    const title=this.data.titles[file]||file.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');
+    return {file,title:'Hubble · '+title+(this.data.today===file?' (today)':''),mime:STAR_TYPES[ext],load:async()=>fs.readFileSync(path.join(this.root,file))};
+  }
+  async next(){
+    try{await this.daily();}catch(e){this.lastError=e;}
+    const files=this.files();
+    if(!files.length)throw Error('No star photos yet and NASA could not be reached. Click NASA to retry, or add images to '+this.root);
+    let file;
+    if(!this.shownToday&&files.includes(this.data.today)){file=this.data.today;this.shownToday=true;}
+    else{
+      const pool=files.filter(f=>f!==this.last||files.length===1);
+      const weights=pool.map(f=>this.classic(f)?CLASSIC_WEIGHT:1);
+      let r=Math.random()*weights.reduce((a,b)=>a+b,0);
+      file=pool.find((f,i)=>(r-=weights[i])<0)||pool[0];
+    }
+    this.last=file;return this.item(file);
+  }
+}
 
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const MIME = {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.avif':'image/avif'};
@@ -280,8 +366,11 @@ class ChannelPhotos {
 }
 
 module.exports=class Moodglass {
- start(){this.host=photoHost();this.channels=new ChannelPhotos(this.host);this.webb=new WebbPhotos();this.webb.first=true;this.webb.pool=[];this.webb.cache=new Map();this.host.add('MoodBoards',{categories:()=>this.channels.categories(),batch:(...args)=>this.channels.batch(...args),showAdd:()=>this.channels.showAdd(),removeCategory:(source,id)=>{if(source==='NASA'){this.channels.settings.nasa=false;this.channels.save();this.nasa(false);}else this.channels.removeChannel(id);}});this.channels.onNASAChange=enabled=>this.nasa(enabled);this.nasa(this.channels.settings.nasa);}
- nasa(enabled){if(enabled)this.host.add('NASA',{next:()=>this.webb.pick()});else this.host.remove('NASA');}
- stop(){this.channels?.stop();this.host?.remove('NASA');this.host?.remove('MoodBoards');this.webb?.cache.clear();}
- getSettingsPanel(){const box=document.createElement('div');box.append(this.channels.button('Edit photo categories',()=>this.host.edit()));const p=document.createElement('p');p.textContent='Use + to add a chat. Use the pencil to rename or remove categories and toggle NASA. Refresh is manual; no background polling. Local cache: '+this.channels.root;box.append(p);return box;}
+ start(){
+  // The old Astra Mood Boards / Astra NASA Photos prototypes paint their own background over Moodglass.
+  for(const old of ['AstraNasaPhotos','AstraMoodBoards'])if(BdApi.Plugins.isEnabled?.(old)){BdApi.Plugins.disable(old);BdApi.UI.showToast('Moodglass turned off the old '+old+' plugin; it was covering your backgrounds.',{type:'info'});}
+  this.host=photoHost();this.channels=new ChannelPhotos(this.host);this.stars=new StarPhotos();this.host.add('MoodBoards',{categories:()=>this.channels.categories(),batch:(...args)=>this.channels.batch(...args),showAdd:()=>this.channels.showAdd(),removeCategory:(source,id)=>{if(source==='NASA'){this.channels.settings.nasa=false;this.channels.save();this.nasa(false);}else this.channels.removeChannel(id);}});this.channels.onNASAChange=enabled=>this.nasa(enabled);this.nasa(this.channels.settings.nasa);}
+ nasa(enabled){if(enabled)this.host.add('NASA',{next:()=>this.stars.next()});else this.host.remove('NASA');}
+ stop(){this.channels?.stop();this.host?.remove('NASA');this.host?.remove('MoodBoards');}
+ getSettingsPanel(){const box=document.createElement('div');box.append(this.channels.button('Edit photo categories',()=>this.host.edit()));const p=document.createElement('p');p.textContent='Use + to add a chat. Use the pencil to remove categories. The power button turns all backgrounds off. NASA adds one Hubble photo a day to your star folder; add your own space photos there too: '+this.stars.root+'. Chat photo cache: '+this.channels.root;box.append(p);return box;}
 };
