@@ -3,7 +3,7 @@ const dir=__dirname;
 const header=`/**
  * @name Moodglass
  * @author findastra
- * @version 0.2.1
+ * @version 0.2.2
  * @description Your photo chats as edge-to-edge Discord backgrounds. Click to refresh. Optional James Webb images from NASA.
  * @website https://github.com/findastra/moodglass
  * @source https://github.com/findastra/moodglass

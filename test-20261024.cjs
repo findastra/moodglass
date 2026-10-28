@@ -17,7 +17,9 @@ vm.runInNewContext(source+'\nmodule.exports=ChannelPhotos;',sandbox);const C=san
  const beforeFailure=JSON.stringify(c.library[id]);
  c.page=async(_,before)=>{if(before)throw Error('network failed');return Array.from({length:100},(_,i)=>({id:String(2000-i),channel_id:id,attachments:[]}));};
  await assert.rejects(c.sync(id),/network failed/);assert.equal(JSON.stringify(c.library[id]),beforeFailure);
- await assert.rejects(c.batch(id,20,true),/network failed/);
+ // A failed click refresh still shows the saved photos and warns instead of keeping the previous chat up.
+ const toasts=[];sandbox.BdApi.UI.showToast=t=>toasts.push(t);
+ assert.equal((await c.batch(id,20,true)).length,1);await new Promise(r=>setTimeout(r,900));assert.match(toasts.at(-1),/network failed.*Showing saved photos/);
  c.page=async()=>[];await c.sync(id);assert.equal(c.library[id].photos.length,0);assert.equal((await c.batch(id,20,true)).length,0);
  c.removeChannel(id);assert.equal(c.settings.channels.length,0);assert.ok(mem.size);assert.ok(c.library[id]);
  const renderer=fs.readFileSync(path.join(__dirname,'renderer-20261024.js'),'utf8');assert.ok(renderer.includes("moodglass-remove"));assert.ok(renderer.includes("if(editing){const plus"));assert.ok(!renderer.includes('setInterval('));
