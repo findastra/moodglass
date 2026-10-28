@@ -1,7 +1,7 @@
 /**
  * @name Moodglass
  * @author findastra
- * @version 0.2.1
+ * @version 0.2.2
  * @description Your photo chats as edge-to-edge Discord backgrounds. Click to refresh. Optional James Webb images from NASA.
  * @website https://github.com/findastra/moodglass
  * @source https://github.com/findastra/moodglass
@@ -31,6 +31,7 @@ function photoHost(){
  body.moodglass-photos #app-mount [class^="bg_"],body.moodglass-photos #app-mount [class^="app_"],body.moodglass-photos #app-mount [class*="baseLayer_"],body.moodglass-photos #app-mount [class*="chat_"],body.moodglass-photos #app-mount [class*="chatContent_"],body.moodglass-photos #app-mount [class*="sidebar_"],body.moodglass-photos #app-mount [class*="sidebarList_"],body.moodglass-photos #app-mount [class*="membersWrap_"],body.moodglass-photos #app-mount [class*="members_"]{background:transparent!important;background-image:none!important}
  body.moodglass-photos #app-mount .container__2637a,body.moodglass-photos #app-mount .container_c8ffbb,body.moodglass-photos #app-mount nav[aria-label="Servers sidebar"]{background:rgba(10,8,18,.60)!important;background-image:none!important}
  body.moodglass-photos #app-mount [class*="titleBar_"],body.moodglass-photos #app-mount [class*="bar_"],body.moodglass-photos #app-mount [class*="subtitleContainer_"],body.moodglass-photos #app-mount [class*="themed_"],body.moodglass-photos #app-mount [class*="channelTextArea_"],body.moodglass-photos #app-mount [class*="scrollableContainer_"],body.moodglass-photos #app-mount [class*="panels_"],body.moodglass-photos #app-mount [class*="guilds_"]{background:rgba(10,8,18,.40)!important;background-image:none!important}
+ body.moodglass-photos #app-mount [class*="channelTextArea_"] [class*="scrollableContainer_"],body.moodglass-photos #app-mount [class*="channelTextArea_"] [class*="themed_"]{background:transparent!important}
  body.moodglass-photos{--background-gradient-highest:transparent;--background-gradient-high:transparent;--background-gradient-low:transparent;--bg-base-primary:transparent;--bg-base-secondary:transparent;--bg-base-tertiary:transparent}
  #moodglass-photo-toolbar{position:fixed;top:5px;right:190px;left:auto;z-index:10002;display:flex;gap:5px;max-width:calc(100vw - 285px);overflow:visible;padding:0;border:0;background:none;box-shadow:none;font:11px system-ui;-webkit-app-region:no-drag;scrollbar-width:none}
  #moodglass-photo-toolbar .moodglass-border-toggle{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;color:#eee5f6;background:rgba(18,14,26,.68);border-radius:5px;padding:2px 6px;cursor:pointer}
@@ -79,7 +80,7 @@ function photoHost(){
   if(token!==generation){dispose(batch);return;}const previous=images;images=batch;layout();dispose(previous);
  }catch(e){dispose(batch);if(token===generation){bar.title=e.message;api.UI?.showToast?.(e.message,{type:'warning'});}}finally{if(token===generation)busy=false;}}
  const resize=()=>layout();window.addEventListener('resize',resize);
- const host={edit(){editing=!editing;render();},select(source,category,clicked=true){++generation;busy=false;state.source=source;state.category=category;save();render();next(clicked);},add(id,provider){sources.set(id,provider);if(id===preferred||!sources.has(state.source)){++generation;busy=false;state.source=id;}render();if(state.source===id&&state.on)next();},refresh(){render();},remove(id){sources.delete(id);if(state.source===id){++generation;busy=false;state.source=sources.keys().next().value;if(state.source)next();}if(!sources.size){++generation;clearTimeout(resizeTimer);window.removeEventListener('resize',resize);dispose(images);root.remove();bar.remove();document.body.classList.remove('moodglass-photos');api.DOM.removeStyle('moodglass-photo-backgrounds');delete window.__moodglassHost;}else render();}};
+ const host={edit(){editing=!editing;render();},select(source,category,clicked=true){++generation;busy=false;state.source=source;state.category=category;save();render();next(clicked);},redraw(source,category){if(state.on&&state.source===source&&state.category===category){++generation;busy=false;next();}},add(id,provider){sources.set(id,provider);if(id===preferred||!sources.has(state.source)){++generation;busy=false;state.source=id;}render();if(state.source===id&&state.on)next();},refresh(){render();},remove(id){sources.delete(id);if(state.source===id){++generation;busy=false;state.source=sources.keys().next().value;if(state.source)next();}if(!sources.size){++generation;clearTimeout(resizeTimer);window.removeEventListener('resize',resize);dispose(images);root.remove();bar.remove();document.body.classList.remove('moodglass-photos');api.DOM.removeStyle('moodglass-photo-backgrounds');delete window.__moodglassHost;}else render();}};
  window.__moodglassHost=host;return host;
 }
 // Public HTTPS only. No Discord token, cookies, credentials, or authenticated endpoints.
@@ -340,10 +341,15 @@ class ChannelPhotos {
     if(!bytes&&!(a.size>MAX_BYTES))throw Error('A photo could not download. Click the category to retry.');
     return bytes;
   }
+  // Saved photos show at once; a click re-reads the chat afterwards and redraws only if the photos changed.
+  // Waiting for the re-read first left the previous chat on screen for half a minute, or for good when it failed.
   async batch(id,count,clicked){
     if(!id)return[];
-    if(clicked)await this.sync(id);
-    const unique=[...new Map((this.library[id]?.photos||[]).map(p=>[p.hash,p])).values()].filter(p=>fs.existsSync(path.join(this.root,p.file)));
+    const saved=()=>[...new Map((this.library[id]?.photos||[]).map(p=>[p.hash,p])).values()].filter(p=>fs.existsSync(path.join(this.root,p.file)));
+    let unique=saved();
+    const name=this.settings.channels.find(c=>c.id===id)?.name||'this chat';
+    if(clicked&&!unique.length){BdApi.UI.showToast(`Importing photos from ${name}… they appear when it finishes.`);await this.sync(id);unique=saved();}
+    else if(clicked){const before=unique.map(p=>p.hash).sort().join();this.sync(id).then(()=>{if(saved().map(p=>p.hash).sort().join()!==before)this.host.redraw?.('MoodBoards',id);},e=>{if(this.alive)BdApi.UI.showToast(`${name}: ${e.message} Showing saved photos.`,{type:'warning'});});}
     for(let i=unique.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[unique[i],unique[j]]=[unique[j],unique[i]];}
     if(!unique.length&&this.library[id]?.complete)return[];
     if(!unique.length)throw Error('No saved photos yet. Click this category to import its history.');

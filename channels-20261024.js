@@ -129,10 +129,15 @@ class ChannelPhotos {
     if(!bytes&&!(a.size>MAX_BYTES))throw Error('A photo could not download. Click the category to retry.');
     return bytes;
   }
+  // Saved photos show at once; a click re-reads the chat afterwards and redraws only if the photos changed.
+  // Waiting for the re-read first left the previous chat on screen for half a minute, or for good when it failed.
   async batch(id,count,clicked){
     if(!id)return[];
-    if(clicked)await this.sync(id);
-    const unique=[...new Map((this.library[id]?.photos||[]).map(p=>[p.hash,p])).values()].filter(p=>fs.existsSync(path.join(this.root,p.file)));
+    const saved=()=>[...new Map((this.library[id]?.photos||[]).map(p=>[p.hash,p])).values()].filter(p=>fs.existsSync(path.join(this.root,p.file)));
+    let unique=saved();
+    const name=this.settings.channels.find(c=>c.id===id)?.name||'this chat';
+    if(clicked&&!unique.length){BdApi.UI.showToast(`Importing photos from ${name}… they appear when it finishes.`);await this.sync(id);unique=saved();}
+    else if(clicked){const before=unique.map(p=>p.hash).sort().join();this.sync(id).then(()=>{if(saved().map(p=>p.hash).sort().join()!==before)this.host.redraw?.('MoodBoards',id);},e=>{if(this.alive)BdApi.UI.showToast(`${name}: ${e.message} Showing saved photos.`,{type:'warning'});});}
     for(let i=unique.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[unique[i],unique[j]]=[unique[j],unique[i]];}
     if(!unique.length&&this.library[id]?.complete)return[];
     if(!unique.length)throw Error('No saved photos yet. Click this category to import its history.');
