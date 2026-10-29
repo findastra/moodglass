@@ -3,6 +3,12 @@
 *By Astra.* Turn your Discord photo chats into backgrounds: an edge-to-edge mosaic of a chat's photos, or a James Webb
 image from NASA. A BetterDiscord plugin.
 
+![A Moodglass mosaic from a plants chat: a green tiled hall, a wisteria path, mossy stepping stones, a courtyard pool, a blue pool and a willow by a pond](docs/images/moodglass-plants-collage-a-20261029.jpg)
+
+| Another mix | And another |
+| --- | --- |
+| ![The same plants chat mixed again: a garden-view room, a blue pool, a willow, a green tiled hall and a courtyard pool](docs/images/moodglass-plants-collage-b-20261029.jpg) | ![A third mix: wisteria and a willow, mossy stones, a garden-view room, a green tiled hall and a blue pool](docs/images/moodglass-plants-collage-c-20261029.jpg) |
+
 ## The Background
 
 Click **✎**, then add a chat with **+**, then click its button for a new, edge-to-edge mosaic. **⏻** turns every
