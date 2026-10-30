@@ -77,3 +77,8 @@ If the earlier Astra Mood Boards / Astra NASA Photos prototypes are still turned
    image addresses are in [stars-20261027.js](stars-20261027.js).
 2. Versions 0.1.3 to 0.2.2 and this README: built with Claude Opus 5.5, 2026-10-27. The commits before that do not
    name a model.
+
+## License
+
+MIT for the code, see [LICENSE](LICENSE). The pictures are not covered by it: the Webb images keep NASA's terms, and
+the plant collages stay Astra's.
