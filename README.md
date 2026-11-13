@@ -60,6 +60,9 @@ If the earlier Astra Mood Boards / Astra NASA Photos prototypes are still turned
    disk. Removing a category keeps its cache for re-adding later.
 5. **Early release:** Discord's internal message-loading interface and CSS classes may change; failures are shown
    instead of silently reporting a successful import.
+6. **SpellCheck plugin:** DevilBro's SpellCheck (1.7.5) lays a copy of the message box over Discord's, and on Discord's
+   current message box that copy keeps showing "Message @…" over what you type. Moodglass hides the copy. Discord's own
+   spell check still underlines misspelled words.
 
 ## Developer Notes
 
@@ -75,7 +78,8 @@ If the earlier Astra Mood Boards / Astra NASA Photos prototypes are still turned
 1. **Webb images** come from NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/) on
    science.nasa.gov, credited to NASA, ESA, CSA and STScI. The title appears when hovering over NASA. The four classic
    image addresses are in [stars-20261027.js](stars-20261027.js).
-2. Versions 0.1.3 to 0.2.2 and this README: built with Claude Opus 5.5, 2026-10-27. The commits before that do not
+2. Versions 0.1.3 to 0.2.2 and this README: built with Claude Opus 5.5, 2026-10-27. Version 0.2.3 (readable message
+   box, see-through Friends page and DM profile panel): built with Claude Opus 5.5, 2026-11-13. The commits before that do not
    name a model.
 
 ## License
