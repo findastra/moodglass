@@ -23,6 +23,7 @@ vm.runInNewContext(source+'\nmodule.exports=ChannelPhotos;',sandbox);const C=san
  c.page=async()=>[];await c.sync(id);assert.equal(c.library[id].photos.length,0);assert.equal((await c.batch(id,20,true)).length,0);
  c.removeChannel(id);assert.equal(c.settings.channels.length,0);assert.ok(mem.size);assert.ok(c.library[id]);
  const renderer=fs.readFileSync(path.join(__dirname,'renderer-20261024.js'),'utf8');assert.ok(renderer.includes("moodglass-remove"));assert.ok(renderer.includes("if(editing){const plus"));assert.ok(!renderer.includes('setInterval('));
- const bundle=fs.readFileSync(path.join(__dirname,'moodglass-20261024.plugin.js'),'utf8');assert.ok(!/audra|1140085661223882772|1563757775841001503|AppData\\Roaming/.test(bundle));
+ // Privacy: no Windows user folder, no AppData path, no Discord ID (17 to 20 digits) inside the download.
+ const bundle=fs.readFileSync(path.join(__dirname,'moodglass-20261024.plugin.js'),'utf8');assert.ok(!/[A-Za-z]:[\\/]+Users[\\/]|AppData[\\/]+Roaming|(?<!\d)\d{17,20}(?!\d)/.test(bundle));
  console.log('PASS: add/validate channel, duplicate add prevention, complete paginated import, content deduplication, click-only refresh, remove-without-deleting-cache, privacy audit.');
 })().catch(e=>{console.error(e);process.exitCode=1});
