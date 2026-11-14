@@ -1,7 +1,7 @@
 /**
  * @name Moodglass
  * @author findastra
- * @version 0.2.3
+ * @version 0.2.4
  * @description Your photo chats as edge-to-edge Discord backgrounds. Click to refresh. Optional James Webb images from NASA.
  * @website https://github.com/findastra/moodglass
  * @source https://github.com/findastra/moodglass
@@ -49,22 +49,57 @@ function photoHost(){
  #moodglass-photo-toolbar button{border:0;border-radius:5px;padding:3px 7px;color:#eee5f6;background:rgba(18,14,26,.68);white-space:nowrap;font:inherit;cursor:pointer;flex-shrink:0}
  #moodglass-photo-toolbar button[aria-pressed="true"]{background:#dcc1f5;color:#24142e}
  #moodglass-photo-toolbar button:focus-visible{outline:2px solid #efdaff;outline-offset:-2px}
+ /* The chat buttons scroll sideways (mouse wheel) when the window is too narrow for all of them; a fade marks the side with more. */
+ #moodglass-photo-toolbar .moodglass-strip{display:flex;gap:5px;min-width:0;flex:0 1 auto;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+ #moodglass-photo-toolbar .moodglass-strip::-webkit-scrollbar{display:none}
+ #moodglass-photo-toolbar .moodglass-strip[data-more="right"]{mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent)}
+ #moodglass-photo-toolbar .moodglass-strip[data-more="left"]{mask-image:linear-gradient(to left,#000 calc(100% - 24px),transparent)}
+ #moodglass-photo-toolbar .moodglass-strip[data-more="both"]{mask-image:linear-gradient(to right,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+ /* Discord's centered title hides while the toolbar covers it, instead of showing through between the buttons. */
+ body.moodglass-title-covered [class^="bar_"]:has(> [class^="trailing_"]) > [class^="title_"]{visibility:hidden!important}
  `);
  const save=()=>api.Data.save('Moodglass','preferences',state);
  // At most 12 photos on screen at once; more decoded images ran Discord out of memory.
  const count=()=>Math.max(2,Math.min(12,Math.ceil(innerWidth/600)*Math.max(2,Math.ceil(innerHeight/650))));
  // Power switch: off hides every background and gives Discord its normal look back.
  function apply(){root.style.display=state.on?'':'none';document.body.classList.toggle('moodglass-photos',state.on);}
- function render(){bar.replaceChildren();bar.classList.toggle("editing",editing);
+ function render(){const kept=bar.querySelector('.moodglass-strip')?.scrollLeft||0;bar.replaceChildren();bar.classList.toggle("editing",editing);
   const power=document.createElement('button');power.type='button';power.textContent='⏻';power.className='moodglass-power';power.setAttribute('aria-label',state.on?'Turn mood boards off':'Turn mood boards on');power.title=power.getAttribute('aria-label');power.setAttribute('aria-pressed',String(state.on));power.onclick=()=>{state.on=!state.on;save();apply();render();if(state.on&&!images.length)next();};bar.append(power);
-  if(!state.on)return;
-  function add(label,source,category){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(state.source===source&&(source==='NASA'||state.category===category)));b.title=currentTitle()||'Click for another photo';b.onclick=()=>{++generation;busy=false;state.source=source;state.category=category;save();render();next(true);};const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:inline-flex';wrap.append(b);if(editing){const minus=document.createElement('button');minus.textContent='−';minus.className='moodglass-remove';minus.setAttribute('aria-label','Remove '+label);minus.type='button';minus.title='Remove '+label;minus.onclick=e=>{e.stopPropagation();sources.get('MoodBoards')?.removeCategory(source,category);};wrap.append(minus);}bar.append(wrap);}
+  if(!state.on){fit();return;}
+  const strip=document.createElement('span');strip.className='moodglass-strip';bar.append(strip);
+  strip.addEventListener('wheel',e=>{if(strip.scrollWidth<=strip.clientWidth)return;e.preventDefault();strip.scrollLeft+=e.deltaY||e.deltaX;},{passive:false});
+  strip.addEventListener('scroll',()=>hint(strip),{passive:true});
+  function add(label,source,category){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-pressed',String(state.source===source&&(source==='NASA'||state.category===category)));b.title=currentTitle()||'Click for another photo';b.onclick=()=>{++generation;busy=false;state.source=source;state.category=category;save();render();next(true);};const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:inline-flex;flex-shrink:0';wrap.append(b);if(editing){const minus=document.createElement('button');minus.textContent='−';minus.className='moodglass-remove';minus.setAttribute('aria-label','Remove '+label);minus.type='button';minus.title='Remove '+label;minus.onclick=e=>{e.stopPropagation();sources.get('MoodBoards')?.removeCategory(source,category);};wrap.append(minus);}strip.append(wrap);}
   if(sources.has('NASA'))add('NASA','NASA','all');
   for(const c of sources.get('MoodBoards')?.categories?.()||[])if(c.id!=='all')add(c.label,'MoodBoards',c.id);
   if(editing){const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','Add photo chat');plus.onclick=()=>sources.get('MoodBoards')?.showAdd();bar.append(plus);}
   const pencil=document.createElement('button');pencil.textContent='✎';pencil.setAttribute('aria-label',editing?'Finish editing categories':'Edit photo categories');pencil.setAttribute('aria-pressed',String(editing));pencil.onclick=()=>{editing=!editing;render();};bar.append(pencil);
   const label=document.createElement('label');label.className='moodglass-border-toggle';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=state.blurredBorders;checkbox.onchange=()=>{state.blurredBorders=checkbox.checked;save();layout();bar.querySelector('input').focus();};label.append(checkbox,document.createTextNode('Blurred borders'));label.title='Blend the edges between background photos';bar.append(label);
+  strip.scrollLeft=kept;revealActive=true;fit();
  }
+ // Keep the toolbar inside Discord's top bar: right of the back/forward arrows, left of the Inbox, Help and window
+ // buttons (measured, so extra Discord icons are never covered). Discord's centered title hides while the toolbar covers
+ // it. Re-checked on resize and whenever the top bar changes (a new title when you switch chats or servers).
+ let fitFrame=0,watched=null,revealActive=false;
+ const watcher=new MutationObserver(()=>fit());
+ function hint(strip){const extra=strip.scrollWidth-strip.clientWidth;const l=extra>1&&strip.scrollLeft>1,r=extra>1&&strip.scrollLeft<extra-1;strip.dataset.more=l&&r?'both':l?'left':r?'right':'';}
+ function fit(){cancelAnimationFrame(fitFrame);fitFrame=requestAnimationFrame(()=>{
+  // Discord also keeps a hidden copy of the bar (0 x 0, earlier in the page); use the one on screen.
+  const top=[...document.querySelectorAll('[class^="bar_"]:has(> [class^="trailing_"])')].find(b=>b.getBoundingClientRect().width>0)||null;
+  if(top!==watched){watcher.disconnect();watched=top;if(top)watcher.observe(top,{subtree:true,childList:true,characterData:true});}
+  const lead=top?.querySelector(':scope > [class^="leading_"]'),trail=top?.querySelector(':scope > [class^="trailing_"]'),title=top?.querySelector(':scope > [class^="title_"]');
+  const right=trail?Math.max(0,Math.round(innerWidth-trail.getBoundingClientRect().left)+4):190,left=lead?Math.round(lead.getBoundingClientRect().right)+8:95;
+  bar.style.right=right+'px';bar.style.maxWidth=Math.max(60,innerWidth-right-left)+'px';
+  const strip=bar.querySelector('.moodglass-strip');
+  if(strip){
+   // After a redraw, scroll the chosen chat's button into view.
+   const on=revealActive&&strip.querySelector('button[aria-pressed="true"]')?.parentElement;revealActive=false;
+   if(on){const x=on.offsetLeft-strip.offsetLeft;if(x<strip.scrollLeft)strip.scrollLeft=x-8;else if(x+on.offsetWidth>strip.scrollLeft+strip.clientWidth)strip.scrollLeft=x+on.offsetWidth-strip.clientWidth+8;}
+   hint(strip);
+  }
+  const name=title?.firstElementChild||title,a=bar.getBoundingClientRect(),b=name?.getBoundingClientRect();
+  document.body.classList.toggle('moodglass-title-covered',!!b&&b.width>0&&a.left<b.right+8&&a.right>b.left-8);
+ });}
  function currentTitle(){return images.map(x=>x.item.title+' · '+x.w+' × '+x.h).join('\n');}
  function dispose(list){for(const x of list)URL.revokeObjectURL(x.url);}
  async function decode(item){const bytes=await item.load();const url=URL.createObjectURL(new Blob([bytes],{type:item.mime||'image/jpeg'}));try{const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('Unable to decode photo'));img.src=url;});const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,1,1);const [r,g,b,a]=ctx.getImageData(0,0,1,1).data;return{item,url,img,empty:a<16,w:img.naturalWidth,h:img.naturalHeight,color:`rgb(${r},${g},${b})`};}catch(e){URL.revokeObjectURL(url);throw e;}}
@@ -84,27 +119,29 @@ function photoHost(){
   for(const item of items){if(token!==generation)break;const x=await decode(item);if(x.empty){dispose([x]);continue;}batch.push(x);}
   if(token!==generation){dispose(batch);return;}const previous=images;images=batch;layout();dispose(previous);
  }catch(e){dispose(batch);if(token===generation){bar.title=e.message;api.UI?.showToast?.(e.message,{type:'warning'});}}finally{if(token===generation)busy=false;}}
- const resize=()=>layout();window.addEventListener('resize',resize);
- const host={edit(){editing=!editing;render();},select(source,category,clicked=true){++generation;busy=false;state.source=source;state.category=category;save();render();next(clicked);},redraw(source,category){if(state.on&&state.source===source&&state.category===category){++generation;busy=false;next();}},add(id,provider){sources.set(id,provider);if(id===preferred||!sources.has(state.source)){++generation;busy=false;state.source=id;}render();if(state.source===id&&state.on)next();},refresh(){render();},remove(id){sources.delete(id);if(state.source===id){++generation;busy=false;state.source=sources.keys().next().value;if(state.source)next();}if(!sources.size){++generation;clearTimeout(resizeTimer);window.removeEventListener('resize',resize);dispose(images);root.remove();bar.remove();document.body.classList.remove('moodglass-photos');api.DOM.removeStyle('moodglass-photo-backgrounds');delete window.__moodglassHost;}else render();}};
+ // While the window is being resized the toolbar keeps fitting at once; the photos are laid out again once it settles.
+ const resize=()=>{fit();clearTimeout(resizeTimer);resizeTimer=setTimeout(layout,120);};window.addEventListener('resize',resize);
+ const host={edit(){editing=!editing;render();},select(source,category,clicked=true){++generation;busy=false;state.source=source;state.category=category;save();render();next(clicked);},redraw(source,category){if(state.on&&state.source===source&&state.category===category){++generation;busy=false;next();}},add(id,provider){sources.set(id,provider);if(id===preferred||!sources.has(state.source)){++generation;busy=false;state.source=id;}render();if(state.source===id&&state.on)next();},refresh(){render();},remove(id){sources.delete(id);if(state.source===id){++generation;busy=false;state.source=sources.keys().next().value;if(state.source)next();}if(!sources.size){++generation;clearTimeout(resizeTimer);window.removeEventListener('resize',resize);watcher.disconnect();cancelAnimationFrame(fitFrame);document.body.classList.remove('moodglass-title-covered');dispose(images);root.remove();bar.remove();document.body.classList.remove('moodglass-photos');api.DOM.removeStyle('moodglass-photo-backgrounds');delete window.__moodglassHost;}else render();}};
  window.__moodglassHost=host;return host;
 }
 // Public HTTPS only. No Discord token, cookies, credentials, or authenticated endpoints.
-function publicGet(address,limit=16000000,redirects=0){
+// range ("bytes=0-65535") asks for only the start of a file, to read a picture's size before downloading all of it.
+function publicGet(address,limit=16000000,redirects=0,range=''){
     const u=new URL(address);
     // Older NASA asset manifests still publish http links; always upgrade NASA links to HTTPS.
     if(u.protocol==='http:'&&(u.hostname==='nasa.gov'||u.hostname.endsWith('.nasa.gov')))u.protocol='https:';
     if(u.protocol!=='https:'||!(u.hostname==='nasa.gov'||u.hostname.endsWith('.nasa.gov')))return Promise.reject(Error('Only official NASA HTTPS sources are allowed'));
     if(typeof BdApi!=='undefined'&&BdApi.Net?.fetch)return (async()=>{
-      const response=await BdApi.Net.fetch(u.href,{method:'GET',timeout:25000,redirect:'manual'});
-      if(response.status>=300&&response.status<400&&response.headers.get('location')){if(redirects>=4)throw Error('Too many redirects');return publicGet(new URL(response.headers.get('location'),u).href,limit,redirects+1);}
-      if(response.status!==200)throw Error(`NASA returned ${response.status}; try again later`);
+      const response=await BdApi.Net.fetch(u.href,{method:'GET',timeout:25000,redirect:'manual',...(range?{headers:{Range:range}}:{})});
+      if(response.status>=300&&response.status<400&&response.headers.get('location')){if(redirects>=4)throw Error('Too many redirects');return publicGet(new URL(response.headers.get('location'),u).href,limit,redirects+1,range);}
+      if(response.status!==200&&!(range&&response.status===206))throw Error(`NASA returned ${response.status}; try again later`);
       if(Number(response.headers.get('content-length'))>limit)throw Error('NASA file exceeds the download limit');
       const data=new Uint8Array(await response.arrayBuffer());if(data.byteLength>limit)throw Error('NASA file exceeds the download limit');return data;
     })();
     const https=require('https');
-    return new Promise((resolve,reject)=>{const req=https.get(u,{headers:{'User-Agent':'Moodglass/1.0','Accept':'*/*'}},res=>{
-      if(res.statusCode>=300&&res.statusCode<400&&res.headers.location){res.resume();if(redirects>=4)return reject(Error('Too many redirects'));publicGet(new URL(res.headers.location,u).href,limit,redirects+1).then(resolve,reject);return;}
-      if(res.statusCode!==200){res.resume();return reject(Error(`NASA returned ${res.statusCode}; try again later`));}
+    return new Promise((resolve,reject)=>{const req=https.get(u,{headers:{'User-Agent':'Moodglass/1.0','Accept':'*/*',...(range?{Range:range}:{})}},res=>{
+      if(res.statusCode>=300&&res.statusCode<400&&res.headers.location){res.resume();if(redirects>=4)return reject(Error('Too many redirects'));publicGet(new URL(res.headers.location,u).href,limit,redirects+1,range).then(resolve,reject);return;}
+      if(res.statusCode!==200&&!(range&&res.statusCode===206)){res.resume();return reject(Error(`NASA returned ${res.statusCode}; try again later`));}
       let size=0;const chunks=[];res.on('data',c=>{size+=c.length;if(size>limit){req.destroy(Error('NASA file exceeds the download limit'));return;}chunks.push(c);});res.on('end',()=>resolve(Buffer.concat(chunks)));res.on('error',reject);
     });req.setTimeout(25000,()=>req.destroy(Error('NASA request timed out')));req.on('error',reject);});
 }
@@ -125,6 +162,23 @@ const SKY_IMAGE = /image\)\s*$/i;
 // Gallery entries that are charts, labelled versions or hardware photos, not sky images.
 const NOT_SKY = /compass|side-by-side|spectrum|spectra|graph|chart|diagram|illustration|artist|infographic|explainer|comparison|labeled|labelled|annotated|mirror|engineer|clean ?room|telescope element|instrument|technician|launch|banner|logo|poster/i;
 const WEBB_MAX_BYTES = 200000000, WEBB_MIN_EDGE = 3840, SAVE_MAX_EDGE = 7680;
+// Opening a picture takes 4 bytes per pixel. Skip ones that would need more than about 512 MB (256 MB on computers with
+// under 8 GB of memory). The Cosmic Cliffs classic (14575 x 8441, about 490 MB) still fits on an 8 GB computer.
+const webbMaxPixels = () => ((globalThis.navigator?.deviceMemory || 8) >= 8 ? 128e6 : 64e6);
+// Pixel size from the first bytes of a PNG or JPEG file, without opening the picture.
+function imageSize(b){
+  if(!b||b.length<4)return null;
+  if(b.length>=24&&b[0]===0x89&&b[1]===0x50&&b[2]===0x4e&&b[3]===0x47)return{w:((b[16]<<24)|(b[17]<<16)|(b[18]<<8)|b[19])>>>0,h:((b[20]<<24)|(b[21]<<16)|(b[22]<<8)|b[23])>>>0};
+  if(b[0]===0xff&&b[1]===0xd8){
+    for(let i=2;i+8<b.length;){
+      if(b[i]!==0xff){i++;continue;}
+      const m=b[i+1];if(m===0xff||m===0x01||(m>=0xd0&&m<=0xd8)){i+=m===0xff?1:2;continue;}
+      if(m>=0xc0&&m<=0xcf&&m!==0xc4&&m!==0xc8&&m!==0xcc)return{h:(b[i+5]<<8)|b[i+6],w:(b[i+7]<<8)|b[i+8]};
+      i+=2+((b[i+2]<<8)|b[i+3]);
+    }
+  }
+  return null;
+}
 class StarPhotos {
   constructor(){
     const fs=require('fs'),path=require('path');
@@ -165,32 +219,39 @@ class StarPhotos {
     }
     return fresh(first.items);
   }
-  // Downloads the original; keeps it only if it is at least 3840 px. Very large images are stored as 8K JPEGs.
+  // Reads the picture's size from its first 64 KB, so pictures under 3840 px or too big to open safely are skipped
+  // without downloading them. Keepers up to 8K are saved untouched (never opened); bigger ones are opened straight at
+  // 8K and stored as 8K JPEGs, instead of opening the full original (Cosmic Cliffs alone is 130 MB and 14575 px wide).
   async fetchStar(c){
     const fs=require('fs'),path=require('path');
     const done=this.files().find(f=>f.startsWith('webb-'+c.id));if(done)return done;
     const ext=(c.url.match(/\.(png|jpe?g)$/i)||['.png'])[0].toLowerCase();
-    const bytes=await publicGet(c.url,WEBB_MAX_BYTES);
-    const bitmap=await createImageBitmap(new Blob([bytes],{type:STAR_TYPES[ext]}));
-    try{
-      const w=bitmap.width,h=bitmap.height,edge=Math.max(w,h);
-      if(edge<WEBB_MIN_EDGE){this.data.tried.push(c.id);this.save();return'';}
-      let file='webb-'+c.id+ext,out=bytes;
-      if(edge>SAVE_MAX_EDGE){
-        const scale=SAVE_MAX_EDGE/edge,canvas=new OffscreenCanvas(Math.round(w*scale),Math.round(h*scale));
-        const ctx=canvas.getContext('2d');ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    const usable=s=>!!s&&Math.max(s.w,s.h)>=WEBB_MIN_EDGE&&s.w*s.h<=webbMaxPixels();
+    const skip=()=>{this.data.tried.push(c.id);this.save();return'';};
+    let size=null;try{size=imageSize(await publicGet(c.url,65536,0,'bytes=0-65535'));}catch{}
+    if(size&&!usable(size))return skip();
+    BdApi.UI?.showToast?.('Downloading a Webb image from NASA: '+c.title+'…');
+    let bytes=await publicGet(c.url,WEBB_MAX_BYTES);
+    size=imageSize(bytes);if(!usable(size))return skip();
+    const edge=Math.max(size.w,size.h);
+    let file='webb-'+c.id+ext,out=bytes;
+    if(edge>SAVE_MAX_EDGE){
+      const scale=SAVE_MAX_EDGE/edge,w=Math.round(size.w*scale),h=Math.round(size.h*scale);
+      const blob=new Blob([bytes],{type:STAR_TYPES[ext]});bytes=out=null;
+      const bitmap=await createImageBitmap(blob,{resizeWidth:w,resizeHeight:h,resizeQuality:'high'});
+      try{
+        const canvas=new OffscreenCanvas(w,h);canvas.getContext('2d').drawImage(bitmap,0,0);
         out=new Uint8Array(await (await canvas.convertToBlob({type:'image/jpeg',quality:0.95})).arrayBuffer());file='webb-'+c.id+'.jpg';
-      }
-      fs.writeFileSync(path.join(this.root,file),out);
-      this.data.titles[file]=c.title;this.save();return file;
-    }finally{bitmap.close();}
+      }finally{bitmap.close();}
+    }
+    fs.writeFileSync(path.join(this.root,file),out);
+    this.data.titles[file]=c.title;this.save();return file;
   }
   // A new image from NASA: the classics first, then random gallery images.
   async fetchNew(){
     const candidates=WEBB_CLASSICS.filter(c=>!this.has(c.id));
     if(!candidates.length)candidates.push(...(await this.randomWebb()).slice(0,5));
     for(const c of candidates){
-      BdApi.UI?.showToast?.('Downloading a Webb image from NASA: '+c.title+'…');
       try{const file=await this.fetchStar(c);if(file)return file;}catch(e){this.lastError=e;}
     }
     return'';
@@ -203,13 +264,15 @@ class StarPhotos {
     return {file,title:'James Webb · '+title+' · NASA, ESA, CSA, STScI',mime:STAR_TYPES[ext],load:async()=>fs.readFileSync(path.join(this.root,file),null)};
   }
   async next(){
-    let file='';
+    let file='';this.lastError=null;
     try{file=await this.fetchNew();}catch(e){this.lastError=e;}
     if(!file){
+      // "Could not be reached" only when a request really failed; otherwise NASA answered but had nothing new that fits.
+      const reached=!this.lastError;
       const files=this.files().filter(f=>f!==this.last);
-      if(!files.length&&!this.files().length)throw Error('Could not reach NASA for a Webb image. Click NASA to retry. '+(this.lastError?.message||''));
+      if(!files.length&&!this.files().length)throw Error(reached?'NASA had no new Webb image big enough this time. Click NASA to try again.':'Could not reach NASA for a Webb image. Click NASA to retry. '+(this.lastError?.message||''));
       file=files.length?files[Math.floor(Math.random()*files.length)]:this.last;
-      BdApi.UI?.showToast?.('NASA could not be reached; showing a photo from your library.',{type:'warning'});
+      BdApi.UI?.showToast?.(reached?'No new Webb image this time; showing one from your library.':'NASA could not be reached; showing a photo from your library.',{type:reached?'info':'warning'});
     }
     this.last=file;return this.item(file);
   }
@@ -260,7 +323,10 @@ class ChannelPhotos {
       let finished=false;
       const finish=(error,messages)=>{if(finished)return;finished=true;clearTimeout(timer);dispatcher.unsubscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.unsubscribe('LOAD_MESSAGES_FAILURE',failure);error?reject(error):resolve(messages);};
       const started=Date.now();
-      const success=event=>{if((event.channelId||event.channel_id)===channelId&&Array.isArray(event.messages)&&(!event.requestStartTime||event.requestStartTime>=started)&&(event.isBefore===undefined||event.isBefore===!!before))finish(null,event.messages);};
+      // Only this request's page. Discord's event names the page's "before" message and its size, so a page Discord loads
+      // while you scroll the same chat is ignored instead of making the scan skip part of the history.
+      const ours=event=>!event.jump&&(!('before' in event)||String(event.before??'')===String(before??''))&&(event.limit===undefined||event.limit===100);
+      const success=event=>{if((event.channelId||event.channel_id)===channelId&&Array.isArray(event.messages)&&(!event.requestStartTime||event.requestStartTime>=started)&&(event.isBefore===undefined||event.isBefore===!!before)&&ours(event))finish(null,event.messages);};
       const failure=event=>{if((event.channelId||event.channel_id)===channelId)finish(Error('Discord could not load this chat. Try again later.'));};
       const timer=setTimeout(()=>finish(Error('Discord did not return the photo history. Try again.')),30000);
       dispatcher.subscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.subscribe('LOAD_MESSAGES_FAILURE',failure);
@@ -307,7 +373,8 @@ class ChannelPhotos {
           seen.add(a.id);kept++;
           const hash=crypto.createHash('sha256').update(bytes).digest('hex');
           const duplicate=lib.photos.find(p=>p.hash===hash&&fs.existsSync(path.join(this.root,p.file)));
-          const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('-','');
+          // Today's date on this computer's own clock.
+          const date=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('-','');
           const file=duplicate?.file||`${id}/photo-${a.id}-${date}${ext}`;
           if(!duplicate){fs.mkdirSync(path.join(this.root,id),{recursive:true});fs.writeFileSync(path.join(this.root,file),bytes);added++;}
           lib.photos=lib.photos.filter(p=>p.id!==a.id);
@@ -342,9 +409,9 @@ class ChannelPhotos {
       }
     }
     if(a.size>MAX_BYTES)return null;
-    const bytes=await fetchBytes(url.href);
-    if(!bytes&&!(a.size>MAX_BYTES))throw Error('A photo could not download. Click the category to retry.');
-    return bytes;
+    // A photo Discord won't serve (removed, flagged) is skipped, so one bad file can't stop the whole chat refreshing.
+    // It is tried again on the next click. A network failure still throws and stops the scan without changing the library.
+    return fetchBytes(url.href);
   }
   // Saved photos show at once; a click re-reads the chat afterwards and redraws only if the photos changed.
   // Waiting for the re-read first left the previous chat on screen for half a minute, or for good when it failed.

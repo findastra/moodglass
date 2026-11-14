@@ -1,7 +1,10 @@
 # Moodglass
 
-*By Astra.* Turn your Discord photo chats into backgrounds: an edge-to-edge mosaic of a chat's photos, or a James Webb
-image from NASA. A BetterDiscord plugin.
+*By Astra.* Turn your favorite Discord photo chats into a dreamy background behind all of Discord.
+
+## The Background
+
+Pick a chat full of photos, and Moodglass lays them edge to edge behind Discord, like a window you can see through.
 
 ![A Moodglass mosaic from a plants chat: a green tiled hall, a wisteria path, mossy stepping stones, a courtyard pool, a blue pool and a willow by a pond](docs/images/moodglass-plants-collage-a-20261029.jpg)
 
@@ -9,78 +12,60 @@ image from NASA. A BetterDiscord plugin.
 | --- | --- |
 | ![The same plants chat mixed again: a garden-view room, a blue pool, a willow, a green tiled hall and a courtyard pool](docs/images/moodglass-plants-collage-b-20261029.jpg) | ![A third mix: wisteria and a willow, mossy stones, a garden-view room, a green tiled hall and a blue pool](docs/images/moodglass-plants-collage-c-20261029.jpg) |
 
-## The Background
-
-Click **✎**, then add a chat with **+**, then click its button for a new, edge-to-edge mosaic. **⏻** turns every
-background off and back on. Each NASA click brings in a new James Webb image from NASA.
-
-**[⬇ Download moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js)**
+**[⬇ Download Moodglass](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js)**
 
 **Needs:** the Discord desktop app with [BetterDiscord](https://betterdiscord.app/).
 
 ## Install
 
-1. Install BetterDiscord from [betterdiscord.app](https://betterdiscord.app/).
-2. Download [moodglass-20261024.plugin.js](https://github.com/findastra/moodglass/releases/latest/download/moodglass-20261024.plugin.js). It saves straight to your Downloads folder. **Don't double-click it.** Windows would try to run it with Windows Script Host and show a "Syntax error / JavaScript compilation error" box. That box is harmless (click OK); the file only works inside BetterDiscord.
-3. Open your BetterDiscord plugins folder, `C:\Users\<you>\AppData\Roaming\BetterDiscord\plugins`. Any of these gets you there:
-   - In Discord: **Settings → BetterDiscord → Plugins → Open Plugins Folder**.
-   - In [Everything](https://www.voidtools.com/) search: type `betterdiscord`, open the **BetterDiscord** folder in `AppData\Roaming`, then its **plugins** folder.
-   - In File Explorer: paste `%APPDATA%\BetterDiscord\plugins` into the address bar and press Enter.
-
-   Drag the downloaded `moodglass-20261024.plugin.js` from Downloads into that folder, then turn on **Moodglass** in Discord's BetterDiscord → Plugins list.
-4. Click **✎** at the top right, then **+**. Click a chat in Discord, or navigate to it and choose **Use this open chat**.
-
-If the earlier Astra Mood Boards / Astra NASA Photos prototypes are still turned on, Moodglass turns them off when it starts, because they draw their own background over it. You can delete their files from the plugins folder.
+1. Install [BetterDiscord](https://betterdiscord.app/).
+2. Download **moodglass-20261024.plugin.js** with the button above. Don't double-click it. It only works inside Discord.
+3. In Discord, open **Settings → BetterDiscord → Plugins → Open Plugins Folder**, and drag the file in.
+4. Turn on **Moodglass** in that same Plugins list.
+5. Click **✎** at the top right, then **+**, then click a chat with photos. That's it!
 
 ### Buttons & Instructions
 
 | Button | What it does |
 | --- | --- |
-| **Channel buttons** | Show a new mosaic from that chat's saved photos straight away, then re-read the chat's photo history in the background. Each click reads the newest photos (up to 150 photos or 3,000 messages back, so big chats can't crash Discord), adds new ones, and removes deleted attachments from the background selection; if anything changed, the mosaic redraws. Up to 12 photos show at once. A chat with no saved photos yet shows an "Importing…" note and its photos once the import finishes. An empty photo chat clears the background. A failed refresh keeps showing the chat's saved photos and shows an error. |
-| **+** | Add a server text channel, direct-message chat, or individual thread that your Discord client can access. For forums, add an individual post. A DM's button is named after the other person's profile name. If a name is longer than 20 letters, Moodglass asks you to type a shorter one. |
-| **✎** | Show a minus next to each category and reveal **+**. Click a minus to remove that category; click the pencil again to finish. Removal does not delete Discord posts or cached files. A removed NASA category can be restored through **+ → Add NASA**. |
-| **NASA** | Each click downloads a new James Webb image from NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/), saves it to the `moodglass-stars` folder in your plugins folder (your star library) and fills the window with it. The first four clicks bring in the classics: Cosmic Cliffs, Rho Ophiuchi and two Pillars of Creation views. After that, each click picks a random Webb sky image (compass, chart, diagram and hardware images are skipped, and anything under 3840 pixels). Originals over 8K are stored as high-quality 8K (7680 px) JPEGs to keep Discord from running out of memory. If NASA can't be reached, a photo from your library is shown. Put your own space pictures in `moodglass-stars` and they can show up too. |
-| **⏻** | Turn all mood boards off so Discord looks normal; only the power button stays. Click it again to turn them back on. The choice is saved. |
-| **Blurred borders** | The checkbox at the top blends photo edges or shows crisp borders. The choice is saved and applies immediately without loading different photos. On by default. |
-| **Resize** | The current photos rearrange without changing. Mosaic tiles crop to fill their space, with no gaps or repeated image content in a layout. |
+| **A chat's button** | Shows a fresh mix of that chat's photos. New photos in the chat join in the next time you click. |
+| **+** | Adds a chat: a server channel, a DM, or a thread. |
+| **✎** | Shows **+** and a little **−** on each button, so you can add or remove chats. Click it again when you're done. |
+| **NASA** | Fills the window with a James Webb space picture. Each click brings a new one. |
+| **⏻** | Turns all the backgrounds off and on. |
+| **Blurred borders** | Blends the edges between photos, or keeps them crisp. |
 
 ## Quirks
 
-1. **No timed slideshow or background channel polling.** A click starts a finite import; removing the category cancels
-   its import. Webb originals can be over 100 MB, so a NASA click can take a few seconds.
-2. **Privacy:** only image attachments from chats you explicitly add are imported. The plugin stores image files in
-   `moodglass-cache` inside your BetterDiscord plugins directory, and channel IDs, category labels, attachment IDs and
-   image hashes in BetterDiscord's local data storage. It does not save message text, read account tokens, send
-   messages, or upload photos. Your personal channels, images and configuration are not part of this repository or
-   download.
-3. PNG, JPEG, WebP, GIF and AVIF attachments are supported. Photos larger than 2048 pixels are downloaded as resized
-   copies from Discord's image server; files over 20 MB that can't be resized are skipped. External image embeds and
-   linked web galleries are not imported.
-4. Deleted attachments are removed from the selectable library after a successful refresh; downloaded files remain on
-   disk. Removing a category keeps its cache for re-adding later.
-5. **Early release:** Discord's internal message-loading interface and CSS classes may change; failures are shown
-   instead of silently reporting a successful import.
-6. **SpellCheck plugin:** DevilBro's SpellCheck (1.7.5) lays a copy of the message box over Discord's, and on Discord's
-   current message box that copy keeps showing "Message @…" over what you type. Moodglass hides the copy. Discord's own
-   spell check still underlines misspelled words.
+1. **Nothing changes on its own.** Photos only change when you click. There's no slideshow.
+2. **Your photos stay on your computer.** Moodglass only saves photos from the chats you add. It never reads your
+   messages, never sends anything, and never uploads anything.
+3. **Big chats are fine.** Moodglass keeps the newest 150 photos and shows up to 12 at a time, so Discord doesn't slow
+   down.
+4. **The first NASA click can take a few seconds.** Space pictures are huge.
+5. **Lots of chats, or a small window?** The chat buttons scroll sideways with your mouse wheel. Discord's title at
+   the top hides while the buttons cover it.
+6. **Using the SpellCheck plugin too?** It used to cover what you type with the "Message @…" hint. Moodglass fixes that,
+   and Discord's own spell check still underlines words.
+7. **Something look off after a Discord update?** Discord sometimes renames its parts. Grab the newest download.
 
 ## Developer Notes
 
-1. **Build:** `node build-20261024.cjs` rebuilds the single installable file. No third-party runtime libraries are
-   required.
-2. **Tests:** layout, category editing, pagination, deduplication, cancellation and cleanup are tested with local
-   fixtures (the `test-*.cjs` files). Live Discord import compatibility must also be checked on the installed client.
-3. **File names:** the dated `.plugin.js` filename is required for BetterDiscord loading. `README.md` keeps GitHub's
-   recognized documentation filename.
+1. **What's where:** `renderer-20261024.js` draws the background and the buttons, `channels-20261024.js` reads the
+   photo chats, and `stars-20261027.js` brings in the NASA pictures.
+2. **Build:** `node build-20261024.cjs` puts them together into `moodglass-20261024.plugin.js`.
+3. **Tests:** `node test-20261024.cjs`, and the other `test-*.cjs` files. The borders, empty background, power and
+   toolbar tests need [Playwright](https://playwright.dev/) and Microsoft Edge.
+4. **File names:** BetterDiscord needs the `.plugin.js` ending, and GitHub needs `README.md`.
 
 ## Credits
 
-1. **Webb images** come from NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/) on
-   science.nasa.gov, credited to NASA, ESA, CSA and STScI. The title appears when hovering over NASA. The four classic
-   image addresses are in [stars-20261027.js](stars-20261027.js).
-2. Versions 0.1.3 to 0.2.2 and this README: built with Claude Opus 5.5, 2026-10-27. Version 0.2.3 (readable message
-   box, see-through Friends page and DM profile panel): built with Claude Opus 5.5, 2026-11-13. The commits before that do not
-   name a model.
+1. **Space pictures:** NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/), credited
+   to NASA, ESA, CSA and STScI.
+2. **Plant collages** above: Astra's.
+3. Built with Claude Opus 5.5 (`claude-opus-5-5`): versions 0.1.3 to 0.2.2 on 2026-10-27, and 0.2.3 and 0.2.4 on
+   2026-11-13.
+   The commits before that do not name a model.
 
 ## License
 
