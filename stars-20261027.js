@@ -14,6 +14,23 @@ const SKY_IMAGE = /image\)\s*$/i;
 // Gallery entries that are charts, labelled versions or hardware photos, not sky images.
 const NOT_SKY = /compass|side-by-side|spectrum|spectra|graph|chart|diagram|illustration|artist|infographic|explainer|comparison|labeled|labelled|annotated|mirror|engineer|clean ?room|telescope element|instrument|technician|launch|banner|logo|poster/i;
 const WEBB_MAX_BYTES = 200000000, WEBB_MIN_EDGE = 3840, SAVE_MAX_EDGE = 7680;
+// Opening a picture takes 4 bytes per pixel. Skip ones that would need more than about 512 MB (256 MB on computers with
+// under 8 GB of memory). The Cosmic Cliffs classic (14575 x 8441, about 490 MB) still fits on an 8 GB computer.
+const webbMaxPixels = () => ((globalThis.navigator?.deviceMemory || 8) >= 8 ? 128e6 : 64e6);
+// Pixel size from the first bytes of a PNG or JPEG file, without opening the picture.
+function imageSize(b){
+  if(!b||b.length<4)return null;
+  if(b.length>=24&&b[0]===0x89&&b[1]===0x50&&b[2]===0x4e&&b[3]===0x47)return{w:((b[16]<<24)|(b[17]<<16)|(b[18]<<8)|b[19])>>>0,h:((b[20]<<24)|(b[21]<<16)|(b[22]<<8)|b[23])>>>0};
+  if(b[0]===0xff&&b[1]===0xd8){
+    for(let i=2;i+8<b.length;){
+      if(b[i]!==0xff){i++;continue;}
+      const m=b[i+1];if(m===0xff||m===0x01||(m>=0xd0&&m<=0xd8)){i+=m===0xff?1:2;continue;}
+      if(m>=0xc0&&m<=0xcf&&m!==0xc4&&m!==0xc8&&m!==0xcc)return{h:(b[i+5]<<8)|b[i+6],w:(b[i+7]<<8)|b[i+8]};
+      i+=2+((b[i+2]<<8)|b[i+3]);
+    }
+  }
+  return null;
+}
 class StarPhotos {
   constructor(){
     const fs=require('fs'),path=require('path');
@@ -54,32 +71,39 @@ class StarPhotos {
     }
     return fresh(first.items);
   }
-  // Downloads the original; keeps it only if it is at least 3840 px. Very large images are stored as 8K JPEGs.
+  // Reads the picture's size from its first 64 KB, so pictures under 3840 px or too big to open safely are skipped
+  // without downloading them. Keepers up to 8K are saved untouched (never opened); bigger ones are opened straight at
+  // 8K and stored as 8K JPEGs, instead of opening the full original (Cosmic Cliffs alone is 130 MB and 14575 px wide).
   async fetchStar(c){
     const fs=require('fs'),path=require('path');
     const done=this.files().find(f=>f.startsWith('webb-'+c.id));if(done)return done;
     const ext=(c.url.match(/\.(png|jpe?g)$/i)||['.png'])[0].toLowerCase();
-    const bytes=await publicGet(c.url,WEBB_MAX_BYTES);
-    const bitmap=await createImageBitmap(new Blob([bytes],{type:STAR_TYPES[ext]}));
-    try{
-      const w=bitmap.width,h=bitmap.height,edge=Math.max(w,h);
-      if(edge<WEBB_MIN_EDGE){this.data.tried.push(c.id);this.save();return'';}
-      let file='webb-'+c.id+ext,out=bytes;
-      if(edge>SAVE_MAX_EDGE){
-        const scale=SAVE_MAX_EDGE/edge,canvas=new OffscreenCanvas(Math.round(w*scale),Math.round(h*scale));
-        const ctx=canvas.getContext('2d');ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    const usable=s=>!!s&&Math.max(s.w,s.h)>=WEBB_MIN_EDGE&&s.w*s.h<=webbMaxPixels();
+    const skip=()=>{this.data.tried.push(c.id);this.save();return'';};
+    let size=null;try{size=imageSize(await publicGet(c.url,65536,0,'bytes=0-65535'));}catch{}
+    if(size&&!usable(size))return skip();
+    BdApi.UI?.showToast?.('Downloading a Webb image from NASA: '+c.title+'…');
+    let bytes=await publicGet(c.url,WEBB_MAX_BYTES);
+    size=imageSize(bytes);if(!usable(size))return skip();
+    const edge=Math.max(size.w,size.h);
+    let file='webb-'+c.id+ext,out=bytes;
+    if(edge>SAVE_MAX_EDGE){
+      const scale=SAVE_MAX_EDGE/edge,w=Math.round(size.w*scale),h=Math.round(size.h*scale);
+      const blob=new Blob([bytes],{type:STAR_TYPES[ext]});bytes=out=null;
+      const bitmap=await createImageBitmap(blob,{resizeWidth:w,resizeHeight:h,resizeQuality:'high'});
+      try{
+        const canvas=new OffscreenCanvas(w,h);canvas.getContext('2d').drawImage(bitmap,0,0);
         out=new Uint8Array(await (await canvas.convertToBlob({type:'image/jpeg',quality:0.95})).arrayBuffer());file='webb-'+c.id+'.jpg';
-      }
-      fs.writeFileSync(path.join(this.root,file),out);
-      this.data.titles[file]=c.title;this.save();return file;
-    }finally{bitmap.close();}
+      }finally{bitmap.close();}
+    }
+    fs.writeFileSync(path.join(this.root,file),out);
+    this.data.titles[file]=c.title;this.save();return file;
   }
   // A new image from NASA: the classics first, then random gallery images.
   async fetchNew(){
     const candidates=WEBB_CLASSICS.filter(c=>!this.has(c.id));
     if(!candidates.length)candidates.push(...(await this.randomWebb()).slice(0,5));
     for(const c of candidates){
-      BdApi.UI?.showToast?.('Downloading a Webb image from NASA: '+c.title+'…');
       try{const file=await this.fetchStar(c);if(file)return file;}catch(e){this.lastError=e;}
     }
     return'';
@@ -92,13 +116,15 @@ class StarPhotos {
     return {file,title:'James Webb · '+title+' · NASA, ESA, CSA, STScI',mime:STAR_TYPES[ext],load:async()=>fs.readFileSync(path.join(this.root,file),null)};
   }
   async next(){
-    let file='';
+    let file='';this.lastError=null;
     try{file=await this.fetchNew();}catch(e){this.lastError=e;}
     if(!file){
+      // "Could not be reached" only when a request really failed; otherwise NASA answered but had nothing new that fits.
+      const reached=!this.lastError;
       const files=this.files().filter(f=>f!==this.last);
-      if(!files.length&&!this.files().length)throw Error('Could not reach NASA for a Webb image. Click NASA to retry. '+(this.lastError?.message||''));
+      if(!files.length&&!this.files().length)throw Error(reached?'NASA had no new Webb image big enough this time. Click NASA to try again.':'Could not reach NASA for a Webb image. Click NASA to retry. '+(this.lastError?.message||''));
       file=files.length?files[Math.floor(Math.random()*files.length)]:this.last;
-      BdApi.UI?.showToast?.('NASA could not be reached; showing a photo from your library.',{type:'warning'});
+      BdApi.UI?.showToast?.(reached?'No new Webb image this time; showing one from your library.':'NASA could not be reached; showing a photo from your library.',{type:reached?'info':'warning'});
     }
     this.last=file;return this.item(file);
   }

@@ -43,7 +43,10 @@ class ChannelPhotos {
       let finished=false;
       const finish=(error,messages)=>{if(finished)return;finished=true;clearTimeout(timer);dispatcher.unsubscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.unsubscribe('LOAD_MESSAGES_FAILURE',failure);error?reject(error):resolve(messages);};
       const started=Date.now();
-      const success=event=>{if((event.channelId||event.channel_id)===channelId&&Array.isArray(event.messages)&&(!event.requestStartTime||event.requestStartTime>=started)&&(event.isBefore===undefined||event.isBefore===!!before))finish(null,event.messages);};
+      // Only this request's page. Discord's event names the page's "before" message and its size, so a page Discord loads
+      // while you scroll the same chat is ignored instead of making the scan skip part of the history.
+      const ours=event=>!event.jump&&(!('before' in event)||String(event.before??'')===String(before??''))&&(event.limit===undefined||event.limit===100);
+      const success=event=>{if((event.channelId||event.channel_id)===channelId&&Array.isArray(event.messages)&&(!event.requestStartTime||event.requestStartTime>=started)&&(event.isBefore===undefined||event.isBefore===!!before)&&ours(event))finish(null,event.messages);};
       const failure=event=>{if((event.channelId||event.channel_id)===channelId)finish(Error('Discord could not load this chat. Try again later.'));};
       const timer=setTimeout(()=>finish(Error('Discord did not return the photo history. Try again.')),30000);
       dispatcher.subscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.subscribe('LOAD_MESSAGES_FAILURE',failure);
@@ -90,7 +93,8 @@ class ChannelPhotos {
           seen.add(a.id);kept++;
           const hash=crypto.createHash('sha256').update(bytes).digest('hex');
           const duplicate=lib.photos.find(p=>p.hash===hash&&fs.existsSync(path.join(this.root,p.file)));
-          const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('-','');
+          // Today's date on this computer's own clock.
+          const date=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('-','');
           const file=duplicate?.file||`${id}/photo-${a.id}-${date}${ext}`;
           if(!duplicate){fs.mkdirSync(path.join(this.root,id),{recursive:true});fs.writeFileSync(path.join(this.root,file),bytes);added++;}
           lib.photos=lib.photos.filter(p=>p.id!==a.id);
@@ -125,9 +129,9 @@ class ChannelPhotos {
       }
     }
     if(a.size>MAX_BYTES)return null;
-    const bytes=await fetchBytes(url.href);
-    if(!bytes&&!(a.size>MAX_BYTES))throw Error('A photo could not download. Click the category to retry.');
-    return bytes;
+    // A photo Discord won't serve (removed, flagged) is skipped, so one bad file can't stop the whole chat refreshing.
+    // It is tried again on the next click. A network failure still throws and stops the scan without changing the library.
+    return fetchBytes(url.href);
   }
   // Saved photos show at once; a click re-reads the chat afterwards and redraws only if the photos changed.
   // Waiting for the re-read first left the previous chat on screen for half a minute, or for good when it failed.
