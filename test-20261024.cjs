@@ -2,7 +2,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=req
 const source=fs.readFileSync(path.join(__dirname,'channels-20261024.js'),'utf8');
 const mem=new Map(),settings={nasa:true,channels:[]};let requests=0,download=0;
 const id='123456789012345678';
-const sandbox={require:n=>n==='fs'?{mkdirSync(){},writeFileSync:(p,b)=>mem.set(p,b),existsSync:p=>mem.has(p),readFileSync:p=>mem.get(p)}:require(n),module:{exports:{}},console,URL,Uint8Array,Blob,Intl,Date,Map,Set,BigInt,setTimeout,clearTimeout,createImageBitmap:async()=>({width:1000,height:1000,close(){}}),BdApi:{Plugins:{folder:'test-cache'},Data:{load:(a,k)=>k==='settings'?settings:null,save(){}},UI:{showToast(){}},Webpack:{getStore:()=>({getChannel:x=>x===id?{id,type:0,name:'Test photos'}:null})},Net:{fetch:async()=>{download++;return{status:200,headers:{get:()=>null},arrayBuffer:async()=>new Uint8Array([1,2,3])}}}}};
+const sandbox={require:n=>n==='fs'?{mkdirSync(){},writeFileSync:(p,b)=>mem.set(p,b),existsSync:p=>mem.has(p),readFileSync:p=>mem.get(p)}:require(n),module:{exports:{}},console,URL,Uint8Array,Blob,Intl,Date,Map,Set,BigInt,setTimeout,clearTimeout,createImageBitmap:async()=>({width:1000,height:1000,close(){}}),BdApi:{Plugins:{folder:'test-cache'},Data:{load:(a,k)=>k==='settings'?settings:null,save(){}},UI:{showToast(){}},Webpack:{getStore:()=>({getChannel:x=>x===id?{id,type:0,name:'Test photos'}:null})},Net:{fetch:async url=>{download++;if(String(url).includes('/9404/'))return{status:404,headers:{get:()=>null},arrayBuffer:async()=>new Uint8Array()};return{status:200,headers:{get:()=>null},arrayBuffer:async()=>new Uint8Array([1,2,3])}}}}};
 vm.runInNewContext(source+'\nmodule.exports=ChannelPhotos;',sandbox);const C=sandbox.module.exports;
 (async()=>{
  const c=new C({refresh(){},forgetCategory(){}});assert.equal(c.addChannel('https://discord.com/channels/111111111111111111/'+id),id);assert.equal(c.settings.channels.length,1);c.addChannel(id);assert.equal(c.settings.channels.length,1);assert.throws(()=>c.addChannel('https://evil.test/'+id));
@@ -21,9 +21,12 @@ vm.runInNewContext(source+'\nmodule.exports=ChannelPhotos;',sandbox);const C=san
  const toasts=[];sandbox.BdApi.UI.showToast=t=>toasts.push(t);
  assert.equal((await c.batch(id,20,true)).length,1);await new Promise(r=>setTimeout(r,900));assert.match(toasts.at(-1),/network failed.*Showing saved photos/);
  c.page=async()=>[];await c.sync(id);assert.equal(c.library[id].photos.length,0);assert.equal((await c.batch(id,20,true)).length,0);
+ // A photo Discord won't serve (404) is skipped: the rest of the chat still comes in and the scan completes.
+ c.page=async()=>[{id:'300',channel_id:id,attachments:[{id:'9404',url:`https://cdn.discordapp.com/attachments/${id}/9404/gone.png`,size:3},{id:'9005',url:`https://cdn.discordapp.com/attachments/${id}/9005/e.png`,size:3}]}];
+ await c.sync(id);assert.deepEqual([...c.library[id].photos.map(p=>p.id)],['9005']);assert.equal(c.library[id].complete,true);
  c.removeChannel(id);assert.equal(c.settings.channels.length,0);assert.ok(mem.size);assert.ok(c.library[id]);
  const renderer=fs.readFileSync(path.join(__dirname,'renderer-20261024.js'),'utf8');assert.ok(renderer.includes("moodglass-remove"));assert.ok(renderer.includes("if(editing){const plus"));assert.ok(!renderer.includes('setInterval('));
- // Privacy: no Windows user folder, no AppData path, no Discord ID (17 to 20 digits) inside the download.
- const bundle=fs.readFileSync(path.join(__dirname,'moodglass-20261024.plugin.js'),'utf8');assert.ok(!/[A-Za-z]:[\\/]+Users[\\/]|AppData[\\/]+Roaming|(?<!\d)\d{17,20}(?!\d)/.test(bundle));
+ // Privacy: no Windows user folder, no AppData path, no Discord ID (17 to 20 digits), no home time zone inside the download.
+ const bundle=fs.readFileSync(path.join(__dirname,'moodglass-20261024.plugin.js'),'utf8');assert.ok(!/[A-Za-z]:[\\/]+Users[\\/]|AppData[\\/]+Roaming|(?<!\d)\d{17,20}(?!\d)|timeZone/.test(bundle));
  console.log('PASS: add/validate channel, duplicate add prevention, complete paginated import, content deduplication, click-only refresh, remove-without-deleting-cache, privacy audit.');
 })().catch(e=>{console.error(e);process.exitCode=1});

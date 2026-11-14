@@ -43,9 +43,11 @@ Pick a chat full of photos, and Moodglass lays them edge to edge behind Discord,
 3. **Big chats are fine.** Moodglass keeps the newest 150 photos and shows up to 12 at a time, so Discord doesn't slow
    down.
 4. **The first NASA click can take a few seconds.** Space pictures are huge.
-5. **Using the SpellCheck plugin too?** It used to cover what you type with the "Message @…" hint. Moodglass fixes that,
+5. **Lots of chats, or a small window?** The chat buttons scroll sideways with your mouse wheel. Discord's title at
+   the top hides while the buttons cover it.
+6. **Using the SpellCheck plugin too?** It used to cover what you type with the "Message @…" hint. Moodglass fixes that,
    and Discord's own spell check still underlines words.
-6. **Something look off after a Discord update?** Discord sometimes renames its parts. Grab the newest download.
+7. **Something look off after a Discord update?** Discord sometimes renames its parts. Grab the newest download.
 
 ## Developer Notes
 
@@ -53,7 +55,7 @@ Pick a chat full of photos, and Moodglass lays them edge to edge behind Discord,
    photo chats, and `stars-20261027.js` brings in the NASA pictures.
 2. **Build:** `node build-20261024.cjs` puts them together into `moodglass-20261024.plugin.js`.
 3. **Tests:** `node test-20261024.cjs`, and the other `test-*.cjs` files. The borders, empty background, power and
-   toolbar tests need [Playwright](https://playwright.dev/).
+   toolbar tests need [Playwright](https://playwright.dev/) and Microsoft Edge.
 4. **File names:** BetterDiscord needs the `.plugin.js` ending, and GitHub needs `README.md`.
 
 ## Credits
@@ -61,7 +63,8 @@ Pick a chat full of photos, and Moodglass lays them edge to edge behind Discord,
 1. **Space pictures:** NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/), credited
    to NASA, ESA, CSA and STScI.
 2. **Plant collages** above: Astra's.
-3. Built with Claude Opus 5.5 (`claude-opus-5-5`): versions 0.1.3 to 0.2.2 on 2026-10-27, and 0.2.3 on 2026-11-13.
+3. Built with Claude Opus 5.5 (`claude-opus-5-5`): versions 0.1.3 to 0.2.2 on 2026-10-27, and 0.2.3 and 0.2.4 on
+   2026-11-13.
    The commits before that do not name a model.
 
 ## License
