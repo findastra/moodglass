@@ -1,12 +1,14 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=require('path');
 const source=fs.readFileSync(path.join(__dirname,'channels-20261024.js'),'utf8');
+// The picture-type list lives in the renderer, which comes first in the plugin file.
+const PICTURE_TYPES=vm.runInNewContext(fs.readFileSync(path.join(__dirname,'renderer-20261024.js'),'utf8')+'\n;PICTURE_TYPES');
 const mem=new Map(),settings={nasa:true,channels:[]},fetched=[];
 const big='123456789012345678',dm='223456789012345678',group='323456789012345678';
 const chats={[big]:{id:big,type:0,name:'photos'},[dm]:{id:dm,type:1,name:'',recipients:['42']},[group]:{id:group,type:3,name:'',recipients:['42','43']}};
 const users={42:{username:'sam_photos',globalName:'Sam'},43:{username:'someone_with_a_long_name'}};
 const stores={ChannelStore:{getChannel:id=>chats[id]},UserStore:{getUser:id=>users[id]}};
 let n=0;
-const sandbox={require:x=>x==='fs'?{mkdirSync(){},writeFileSync:(p,b)=>mem.set(p,b),existsSync:p=>mem.has(p),readFileSync:p=>mem.get(p)}:require(x),module:{exports:{}},console,URL,Uint8Array,Blob,Intl,Date,Map,Set,BigInt,setTimeout,clearTimeout,createImageBitmap:async()=>{throw Error('dimensions should come from attachment metadata');},BdApi:{Plugins:{folder:'test-cache'},Data:{load:(a,k)=>k==='settings'?settings:null,save(){}},UI:{showToast(){}},Webpack:{getStore:name=>stores[name]},Net:{fetch:async url=>{fetched.push(url);return{status:200,headers:{get:()=>null},arrayBuffer:async()=>new Uint8Array([++n%256,n>>8])};}}}};
+const sandbox={PICTURE_TYPES,require:x=>x==='fs'?{mkdirSync(){},writeFileSync:(p,b)=>mem.set(p,b),existsSync:p=>mem.has(p),readFileSync:p=>mem.get(p)}:require(x),module:{exports:{}},console,URL,Uint8Array,Blob,Intl,Date,Map,Set,BigInt,setTimeout,clearTimeout,createImageBitmap:async()=>{throw Error('dimensions should come from attachment metadata');},BdApi:{Plugins:{folder:'test-cache'},Data:{load:(a,k)=>k==='settings'?settings:null,save(){}},UI:{showToast(){}},Webpack:{getStore:name=>stores[name]},Net:{fetch:async url=>{fetched.push(url);return{status:200,headers:{get:()=>null},arrayBuffer:async()=>new Uint8Array([++n%256,n>>8])};}}}};
 vm.runInNewContext(source+'\nmodule.exports=ChannelPhotos;',sandbox);const C=sandbox.module.exports;
 (async()=>{
  const c=new C({refresh(){}});

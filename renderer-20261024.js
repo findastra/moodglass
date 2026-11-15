@@ -1,4 +1,6 @@
  'use strict';
+// The picture types Moodglass shows, by file extension. Chat photos and the NASA star library share this one list.
+const PICTURE_TYPES = {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.avif':'image/avif'};
 // One renderer. Channel imports occur only through explicit category actions.
 function photoHost(){
  if(window.__moodglassHost)return window.__moodglassHost;
@@ -20,9 +22,11 @@ function photoHost(){
  #moodglass-photo-backdrop[data-source="NASA"]:after{background:transparent}
  body.moodglass-photos #app-mount{position:relative;z-index:1;background:transparent!important}
  body.moodglass-photos{--background-primary:transparent;--background-secondary:transparent;--background-secondary-alt:transparent;--background-tertiary:transparent;--background-base-low:transparent;--background-base-lower:transparent;--background-base-lowest:transparent}
- body.moodglass-photos #app-mount [class^="bg_"],body.moodglass-photos #app-mount [class^="app_"],body.moodglass-photos #app-mount [class*="baseLayer_"],body.moodglass-photos #app-mount [class*="chat_"],body.moodglass-photos #app-mount [class*="chatContent_"],body.moodglass-photos #app-mount [class*="sidebar_"],body.moodglass-photos #app-mount [class*="sidebarList_"],body.moodglass-photos #app-mount [class*="membersWrap_"],body.moodglass-photos #app-mount [class*="members_"]{background:transparent!important;background-image:none!important}
+ body.moodglass-photos #app-mount [class^="bg_"],body.moodglass-photos #app-mount [class^="app_"],body.moodglass-photos #app-mount [class*="baseLayer_"],body.moodglass-photos #app-mount [class*="chat_"],body.moodglass-photos #app-mount [class*="chatContent_"],body.moodglass-photos #app-mount [class*="sidebarList_"],body.moodglass-photos #app-mount [class*="membersWrap_"],body.moodglass-photos #app-mount [class*="members_"]{background:transparent!important;background-image:none!important}
  body.moodglass-photos #app-mount .container__2637a,body.moodglass-photos #app-mount .container_c8ffbb,body.moodglass-photos #app-mount nav[aria-label="Servers sidebar"]{background:rgba(10,8,18,.60)!important;background-image:none!important}
- body.moodglass-photos #app-mount [class*="titleBar_"],body.moodglass-photos #app-mount [class*="bar_"],body.moodglass-photos #app-mount [class*="subtitleContainer_"],body.moodglass-photos #app-mount [class*="themed_"],body.moodglass-photos #app-mount [class*="channelTextArea_"],body.moodglass-photos #app-mount [class*="scrollableContainer_"],body.moodglass-photos #app-mount [class*="panels_"],body.moodglass-photos #app-mount [class*="guilds_"]{background:rgba(10,8,18,.40)!important;background-image:none!important}
+ /* Discord's top bar and its left column (servers, chats and your panel) are named exactly. A broad match on every name
+    containing "bar_" also stacked extra dark boxes on the header's buttons (toolbar_) and the unread pills. */
+ body.moodglass-photos #app-mount [class*="titleBar_"],body.moodglass-photos #app-mount [class^="bar_"]:has(> [class^="trailing_"]),body.moodglass-photos #app-mount [class*="sidebar_"],body.moodglass-photos #app-mount [class*="subtitleContainer_"],body.moodglass-photos #app-mount [class*="themed_"],body.moodglass-photos #app-mount [class*="channelTextArea_"],body.moodglass-photos #app-mount [class*="scrollableContainer_"],body.moodglass-photos #app-mount [class*="panels_"],body.moodglass-photos #app-mount [class*="guilds_"]{background:rgba(10,8,18,.40)!important;background-image:none!important}
  body.moodglass-photos #app-mount [class*="channelTextArea_"] [class*="scrollableContainer_"],body.moodglass-photos #app-mount [class*="channelTextArea_"] [class*="themed_"],body.moodglass-photos #app-mount [class*="channelTextArea_"] textarea{background:transparent!important}
  /* The SpellCheck plugin (1.7.5) lays a copy of the message box over it. Discord's box is a plain textarea now, so the copy
     keeps the "Message @..." hint but never gets the typed text, and the hint covers what you type. Hide the copy. */

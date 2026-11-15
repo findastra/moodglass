@@ -1,8 +1,10 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=require('path');
 const source=fs.readFileSync(path.join(__dirname,'stars-20261027.js'),'utf8');
-const disk=new Map(),saved={},gets=[],toasts=[];let offline=false;
+// The picture-type list lives in the renderer, which comes first in the plugin file.
+const PICTURE_TYPES=vm.runInNewContext(fs.readFileSync(path.join(__dirname,'renderer-20261024.js'),'utf8')+'\n;PICTURE_TYPES');
+const disk=new Map(),saved={},gets=[],toasts=[];let offline=false,reads=0;
 // BetterDiscord's fs: readFileSync returns text unless the encoding is null.
-const fsShim={mkdirSync(){},readdirSync:()=>[...disk.keys()],statSync:()=>({isFile:()=>true}),existsSync:p=>disk.has(path.basename(p)),writeFileSync:(p,b)=>disk.set(path.basename(p),b),readFileSync:(p,enc='utf8')=>{const b=disk.get(path.basename(p));return enc===null?b:new TextDecoder().decode(b);}};
+const fsShim={mkdirSync(){},readdirSync:()=>{reads++;return[...disk.keys()];},statSync:()=>({isFile:()=>true}),existsSync:p=>disk.has(path.basename(p)),writeFileSync:(p,b)=>disk.set(path.basename(p),b),readFileSync:(p,enc='utf8')=>{const b=disk.get(path.basename(p));return enc===null?b:new TextDecoder().decode(b);}};
 const thumb=(id,y='2025/01')=>`https://assets.science.nasa.gov/dynamicimage/assets/science/missions/webb/science/${y}/${id}.png?w=300&h=200`;
 const gallery={type:{pagination_meta:{current:1,total:1},content:[
  {title:'Lion Nebula (MIRI Image)',thumbnailImg:{url:thumb('STScI-LION')}},
@@ -19,7 +21,7 @@ const publicGet=async(url,limit,redirects,range)=>{gets.push({url,range:!!range}
  const id=url.match(/(STScI-[A-Z0-9]+)/)[1];const [w,h]=sizes[id]||[6000,4000];return png(w,h,id);};
 const fullGets=id=>gets.filter(g=>g.url.includes(id)&&!g.url.includes('wp-json')&&!g.range).length;
 const decodes=[];
-const sandbox={require:n=>n==='fs'?fsShim:require(n),publicGet,TextDecoder,TextEncoder,Blob,JSON,Math,Error,console,URLSearchParams,
+const sandbox={PICTURE_TYPES,require:n=>n==='fs'?fsShim:require(n),publicGet,TextDecoder,TextEncoder,Blob,JSON,Math,Error,console,URLSearchParams,
  DOMParser:class{parseFromString(s){return{body:{textContent:s}};}},
  createImageBitmap:async(blob,options)=>{decodes.push(options);return{width:options?.resizeWidth,height:options?.resizeHeight,close(){}};},
  OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return{drawImage(){}}}async convertToBlob(){const w=this.width,h=this.height;return{arrayBuffer:async()=>new TextEncoder().encode(`jpeg ${w}x${h}`).buffer};}},
@@ -42,7 +44,8 @@ vm.runInNewContext(source+'\nthis.StarPhotos=StarPhotos;this.imageSize=imageSize
  // Photos load as bytes, not text.
  assert.ok((await s.item(shown[1]).load()) instanceof Uint8Array);
  // Next click: a new gallery image. Compass, explainer and hardware entries are never downloaded; too-small ones are skipped.
- const fifth=await s.next();assert.ok(['webb-STScI-LION.png'].includes(fifth.file)||saved.stars.tried.includes('STScI-SMALL'));
+ // The star folder is read once for the whole click (twice when nothing new fits), not again for each gallery entry.
+ reads=0;const fifth=await s.next();assert.ok(reads<=2,`the star folder was read ${reads} times in one click`);assert.ok(['webb-STScI-LION.png'].includes(fifth.file)||saved.stars.tried.includes('STScI-SMALL'));
  const sixth=await s.next();
  assert.ok(disk.has('webb-STScI-LION.png'));assert.ok(saved.stars.tried.includes('STScI-SMALL'));assert.ok(!disk.has('webb-STScI-SMALL.png'));
  for(const bad of ['COMPASS','EXPLAINER','HARDWARE'])assert.ok(!gets.some(g=>g.url.includes('STScI-'+bad)&&!g.url.includes('wp-json')),bad+' should not download');

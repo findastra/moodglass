@@ -63,8 +63,8 @@ Pick a chat full of photos, and Moodglass lays them edge to edge behind Discord,
 1. **Space pictures:** NASA's [Webb image gallery](https://science.nasa.gov/mission/webb/multimedia/images/), credited
    to NASA, ESA, CSA and STScI.
 2. **Plant collages** above: Astra's.
-3. Built with Claude Opus 5.5 (`claude-opus-5-5`): versions 0.1.3 to 0.2.2 on 2026-10-27, and 0.2.3 and 0.2.4 on
-   2026-11-13.
+3. Built with Claude Opus 5.5 (`claude-opus-5-5`): versions 0.1.3 to 0.2.2 on 2026-10-27, 0.2.3 and 0.2.4 on
+   2026-11-13, and 0.2.5 on 2026-11-14.
    The commits before that do not name a model.
 
 ## License
