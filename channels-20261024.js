@@ -1,5 +1,4 @@
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
-const MIME = {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.avif':'image/avif'};
 // Big chats crashed Discord when every photo in history was downloaded at full size.
 // Keep the newest MAX_PHOTOS, read at most MAX_PAGES of history, and fetch resized copies.
 const MAX_PHOTOS = 150, MAX_PAGES = 30, MAX_EDGE = 2048, MAX_BYTES = 20000000, MAX_NAME = 20;
@@ -35,10 +34,17 @@ class ChannelPhotos {
     return id;
   }
   removeChannel(id){const job=this.jobs.get(id);if(job)job.cancelled=true;this.settings.channels=this.settings.channels.filter(c=>c.id!==id);this.save();this.host.refresh();}
-  async page(channelId,before,job) {
+  // Discord's message-loading actions and its event dispatcher. Finding them searches all of Discord's code, so it is
+  // done once, not again for every page of history (a big chat reads up to 30 pages).
+  discord(){
+    if(this.modules)return this.modules;
     const actions=BdApi.Webpack.getModule(m=>typeof m?.fetchMessages==='function'&&typeof m?.jumpToMessage==='function',{searchExports:true});
     const dispatcher=BdApi.Webpack.getModule(m=>typeof m?.dispatch==='function'&&typeof m?.subscribe==='function'&&typeof m?.unsubscribe==='function',{searchExports:true});
     if(!actions?.fetchMessages||!dispatcher)throw Error('Discord changed its photo-loading interface. Update Moodglass; saved photos still work.');
+    return this.modules={actions,dispatcher};
+  }
+  async page(channelId,before,job) {
+    const {actions,dispatcher}=this.discord();
     return new Promise((resolve,reject)=>{
       let finished=false;
       const finish=(error,messages)=>{if(finished)return;finished=true;clearTimeout(timer);dispatcher.unsubscribe('LOAD_MESSAGES_SUCCESS',success);dispatcher.unsubscribe('LOAD_MESSAGES_FAILURE',failure);error?reject(error):resolve(messages);};
@@ -84,12 +90,12 @@ class ChannelPhotos {
           if(known.has(a.id)){seen.add(a.id);kept++;continue;}
           let url;try{url=new URL(a.url);}catch{continue;}
           const ext=path.extname(url.pathname).toLowerCase();
-          if(!MIME[ext]||url.protocol!=='https:'||!['cdn.discordapp.com','media.discordapp.net'].includes(url.hostname)||!url.pathname.startsWith('/attachments/'+id+'/'))continue;
+          if(!PICTURE_TYPES[ext]||url.protocol!=='https:'||!['cdn.discordapp.com','media.discordapp.net'].includes(url.hostname)||!url.pathname.startsWith('/attachments/'+id+'/'))continue;
           onProgress(`Reading photo history: ${pages+1} pages, ${added} new images…`);
           const bytes=await this.download(a,url,ext);if(!bytes)continue;
           if(!this.alive||job.cancelled)throw Error('Import cancelled.');
           let dimensions=a.width>0&&a.height>0?[a.width,a.height]:null;
-          if(!dimensions){let bitmap;try{bitmap=await createImageBitmap(new Blob([bytes],{type:MIME[ext]}));}catch{continue;}dimensions=[bitmap.width,bitmap.height];bitmap.close();}
+          if(!dimensions){let bitmap;try{bitmap=await createImageBitmap(new Blob([bytes],{type:PICTURE_TYPES[ext]}));}catch{continue;}dimensions=[bitmap.width,bitmap.height];bitmap.close();}
           seen.add(a.id);kept++;
           const hash=crypto.createHash('sha256').update(bytes).digest('hex');
           const duplicate=lib.photos.find(p=>p.hash===hash&&fs.existsSync(path.join(this.root,p.file)));
@@ -98,7 +104,7 @@ class ChannelPhotos {
           const file=duplicate?.file||`${id}/photo-${a.id}-${date}${ext}`;
           if(!duplicate){fs.mkdirSync(path.join(this.root,id),{recursive:true});fs.writeFileSync(path.join(this.root,file),bytes);added++;}
           lib.photos=lib.photos.filter(p=>p.id!==a.id);
-          lib.photos.push({id:a.id,message:message.id,file,mime:MIME[ext],hash,dimensions});known.add(a.id);
+          lib.photos.push({id:a.id,message:message.id,file,mime:PICTURE_TYPES[ext],hash,dimensions});known.add(a.id);
         }
       }
       pages++;onProgress(`Read ${pages} pages; added ${added} images.`);

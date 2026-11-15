@@ -1,4 +1,6 @@
  'use strict';
+// The picture types Moodglass shows, by file extension. Chat photos and the NASA star library share this one list.
+const PICTURE_TYPES = {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.avif':'image/avif'};
 // One renderer. Channel imports occur only through explicit category actions.
 function photoHost(){
  if(window.__moodglassHost)return window.__moodglassHost;
